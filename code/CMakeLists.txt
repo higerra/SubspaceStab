@@ -19,4 +19,4 @@ endif()
 
 add_executable(SubspaceStab main.cpp tracking.h tracking.cpp warping.h warping.cpp)
 
-target_link_libraries(SubspaceStab ${OpenCV_LIBS})
+target_link_libraries(SubspaceStab ${OpenCV_LIBS} glog gflags)

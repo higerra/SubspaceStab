@@ -9,6 +9,7 @@
 #include <Eigen/Eigen>
 #include <vector>
 #include <string>
+#include <glog/logging.h>
 
 namespace substab {
 	namespace Tracking {
