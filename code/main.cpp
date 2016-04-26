@@ -31,9 +31,11 @@ int main(int argc, char** argv){
 void importVideo(const std::string& path, std::vector<cv::Mat>& images){
 	VideoCapture cap(path);
 	CHECK(cap.isOpened()) << "Can not open video " << path;
+	cout << cap.get(CV_CAP_PROP_FRAME_COUNT) << endl;
 	Mat frame;
 	while(true){
-		if(!cap.read(frame))
+		bool success = cap.read(frame);
+		if(!success)
 			break;
 		images.push_back(frame);
 	}
