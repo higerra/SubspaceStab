@@ -16,13 +16,14 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
+	char buffer[1024] = {};
 	vector<Mat> images;
 	importVideo(string(argv[1]), images);
 
 	printf("%d frames read\n", (int)images.size());
 	for(auto i=0; i<images.size(); ++i){
-		imshow("a", images[i]);
-		waitKey();
+//		sprintf(buffer, "frame%05d.jpg", i);
+//		imwrite(buffer, images[i]);
 	}
 
     return 0;
