@@ -13,7 +13,7 @@
 
 namespace substab {
 	namespace Tracking {
-		void genTrackMatrix(const std::vector<cv::Mat>& images, Eigen::MatrixXf& trackMatrix);
+		void genTrackMatrix(const std::vector<cv::Mat>& images, cv::Mat& trackMatrix);
 	}
 }
 #endif //SUBSPACESTAB_TRACKING_H

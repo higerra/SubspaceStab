@@ -17,13 +17,14 @@ int main(int argc, char** argv){
 		cerr << "Usage ./SubspaceStab <path-to-data>" << endl;
 		return 1;
 	}
-
+	google::InitGoogleLogging(argv[0]);
 	char buffer[1024] = {};
 	vector<Mat> images;
+	printf("Reading video...\n");
 	importVideo(string(argv[1]), images);
 
 	//tracking
-	MatrixXf tracks;
+	cv::Mat tracks;
 	printf("Computing track matrix...\n");
 	Tracking::genTrackMatrix(images, tracks);
 	printf("Done\n");
@@ -39,8 +40,6 @@ int main(int argc, char** argv){
 void importVideo(const std::string& path, std::vector<cv::Mat>& images){
 	VideoCapture cap(path);
 	CHECK(cap.isOpened()) << "Can not open video " << path;
-	cout << cap.get(CV_CAP_PROP_FRAME_COUNT) << endl;
-
 	while(true){
 		Mat frame;
 		bool success = cap.read(frame);
