@@ -6,4 +6,4 @@
 
 namespace substab{
 
-}//namespace substab
+}//namespace substablas

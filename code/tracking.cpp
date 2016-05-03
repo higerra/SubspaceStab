@@ -13,12 +13,13 @@ namespace substab{
 			CHECK(!images.empty());
 			const int width = images[0].cols;
 			const int height = images[0].rows;
+			char buffer[1024] = {};
 
 			int N = 0;
 			vector<vector<cv::Point2f> > tracks(images.size());
 
 			for(auto& v: tracks)
-				v.resize((size_t)width * height, cv::Point2f(-1,-1));
+				v.resize((size_t)width * height / 4, cv::Point2f(-1,-1));
 
 			const double quality_level = 0.02;
 			const double min_distance = 20;
@@ -27,16 +28,21 @@ namespace substab{
 			const size_t min_track_length = 10;
 			const double max_diff_distance = 2;
 
+			printf("Building image pyramid...\n");
 			vector<vector<cv::Mat> > pyramid(images.size());
 			for(auto v=0; v<images.size(); ++v)
 				cv::buildOpticalFlowPyramid(images[v], pyramid[v], cv::Size(winSizePyramid, winSizePyramid), nLevel);
 
 
 			int trackInd = 0;
-			for(auto v=0; v<images.size(); ++v){
+			for(auto v=0; v<5; ++v){
+				printf("==========================\n");
+				printf("Start frame: %d\n", v);
 				vector<cv::Point2f> corners;
+				printf("Computing putative features...\n");
 				cv::goodFeaturesToTrack(images[v], corners, width * height, quality_level, min_distance);
 				vector<cv::Point2f> newcorners;
+				printf("Removing existing tracks...\n");
 				newcorners.reserve(corners.size());
 				for(auto cid=0; cid < corners.size(); ++cid){
 					bool is_new = true;
@@ -81,6 +87,39 @@ namespace substab{
 					CHECK_LT(trackInd, tracks[0].size());
 				}
 			}
+
+			//for debugging
+			{
+				const int testStartFrame = 0;
+				vector<size_t> visInds;
+				//collect trackes to visualize
+				for(auto tid=0; tid<trackInd; ++tid){
+					if(tracks[tid][testStartFrame].x >= 0){
+						if(testStartFrame == 0){
+							visInds.push_back(tid);
+						}else if(tracks[tid][testStartFrame-1].x >= 0)
+							visInds.push_back(tid);
+					}
+				}
+
+				for(auto v=testStartFrame; v<images.size(); ++v){
+					//if no tracks, break
+					int kTrack = 0;
+					Mat img = images[v].clone();
+					for(auto visid=0; visid<visInds.size(); ++visid){
+						if(tracks[visInds[visid]][v].x >= 0) {
+							cv::circle(img, tracks[visInds[visid]][v],1,Scalar(0,0,255),2);
+							kTrack++;
+						}
+					}
+					if(kTrack == 0)
+						break;
+					sprintf(buffer, "trackVis%05d_t%05d.jpg", testStartFrame, v);
+					imwrite(buffer, img);
+				}
+			}
+
 		}
-	}
+
+	}//namespace Tracking
 }//namespace substab
