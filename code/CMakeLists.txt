@@ -18,6 +18,6 @@ if(OPENMP_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-add_executable(SubspaceStab main.cpp tracking.h tracking.cpp warping.h warping.cpp)
+add_executable(SubspaceStab main.cpp tracking.h tracking.cpp warping.h warping.cpp factorization.cpp factorization.h)
 
 target_link_libraries(SubspaceStab ${OpenCV_LIBS} glog gflags)

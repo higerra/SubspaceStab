@@ -9,7 +9,7 @@ using namespace cv;
 
 namespace substab{
 	namespace Tracking{
-		void genTrackMatrix(const std::vector<cv::Mat>& images, cv::Mat& trackMatrix){
+		void genTrackMatrix(const std::vector<cv::Mat>& images, FeatureTracks& trackMatrix, const int tWindow, const int stride){
 			CHECK(!images.empty());
 			const int width = images[0].cols;
 			const int height = images[0].rows;
@@ -22,16 +22,11 @@ namespace substab{
 			for(auto v=0; v<grays.size(); ++v)
 				cvtColor(images[v], grays[v], CV_BGR2GRAY);
 
-			vector<vector<cv::Point2f> > tracks((size_t)width * height / 4);
-			for(auto& v: tracks)
-				v.resize(images.size(), cv::Point2f(-1,-1));
-
 			const double quality_level = 0.02;
 			const double min_distance = 20;
 			const int winSizePyramid = 21;
 			const int nLevel = 2;
 
-			const size_t min_track_length = 5;
 			const double max_diff_distance = 2;
 			const int max_corners = width * height / 64;
 			const int interval = 1;
@@ -42,9 +37,8 @@ namespace substab{
 				cv::buildOpticalFlowPyramid(grays[v], pyramid[v], cv::Size(winSizePyramid, winSizePyramid), nLevel);
 			}
 
-
-			int trackInd = 0;
-			for(auto v=0; v<10; v+=interval){
+			for(auto v=0; v<50; v+=interval){
+				CHECK_EQ(trackMatrix.tracks.size(), trackMatrix.offset.size());
 				printf("==========================\n");
 				printf("Start frame: %d\n", v);
 				vector<cv::Point2f> corners;
@@ -55,9 +49,10 @@ namespace substab{
 				newcorners.reserve(corners.size());
 				for(auto cid=0; cid < corners.size(); ++cid){
 					bool is_new = true;
-					for(auto j=0; j<trackInd; ++j){
-						if(tracks[v][j].x >= 0) {
-							double dis = cv::norm(corners[cid] - tracks[v][j]);
+					for(auto j=0; j<trackMatrix.tracks.size(); ++j){
+						if(trackMatrix.tracks[j].size() + trackMatrix.offset[j] >= v){
+							const cv::Point2f& pt = trackMatrix.tracks[j][v-trackMatrix.offset[j]];
+							double dis = cv::norm(corners[cid]-pt);
 							if (dis <= max_diff_distance)
 								is_new = false;
 						}
@@ -91,46 +86,24 @@ namespace substab{
 
 				printf("Done. Filtering...\n");
 				for(auto i=0; i<curTracks.size(); ++i){
-					if(curTracks[i].size() < min_track_length)
+					if(curTracks[i].size() < tWindow)
 						continue;
-					CHECK_LE(v+curTracks[i].size(), images.size()) << v << ' ' << curTracks[i].size() << ' ' << images.size();
-					CHECK_LT(trackInd, tracks.size());
-					for(auto j=v; j<v+curTracks[i].size(); ++j)
-						tracks[trackInd][j] = curTracks[i][j-v];
-					trackInd++;
-				}
-				printf("Done. Track ind: %d\n", trackInd);
-			}
-
-			//fill in matrix
-			trackMatrix = Mat(trackInd*2, (int)images.size(), CV_32F);
-			for(auto tid=0; tid<trackInd; ++tid){
-				for(auto i=0; i<images.size(); ++i){
-					
+					trackMatrix.tracks.push_back(curTracks[i]);
+					trackMatrix.offset.push_back((size_t)v);
 				}
 			}
 
 			//for debugging
-			{
-//				const int testStartFrame = 2;
-//				vector<size_t> visInds;
+//			{
+//				const int testStartFrame = 0;
 //				//collect trackes to visualize
-//				for(auto tid=0; tid<trackInd; ++tid){
-//					if(tracks[tid][testStartFrame].x >= 0){
-//						if(testStartFrame == 0){
-//							visInds.push_back(tid);
-//						}else if(tracks[tid][testStartFrame-1].x >= 0)
-//							visInds.push_back(tid);
-//					}
-//				}
-//
 //				for(auto v=testStartFrame; v<images.size(); ++v){
 //					//if no tracks, break
 //					int kTrack = 0;
 //					Mat img = images[v].clone();
-//					for(auto visid=0; visid<visInds.size(); ++visid){
-//						if(tracks[visInds[visid]][v].x >= 0) {
-//							cv::circle(img, tracks[visInds[visid]][v],1,Scalar(0,0,255),2);
+//					for(auto tid=0; tid<trackMatrix.tracks.size(); ++tid) {
+//						if(trackMatrix.offset[tid] == testStartFrame && trackMatrix.tracks[tid].size() + trackMatrix.offset[tid] >= v) {
+//							cv::circle(img, trackMatrix.tracks[tid][v-trackMatrix.offset[tid]], 1, Scalar(0, 0, 255), 2);
 //							kTrack++;
 //						}
 //					}
@@ -139,9 +112,26 @@ namespace substab{
 //					sprintf(buffer, "trackVis%05d_t%05d.jpg", testStartFrame, v);
 //					imwrite(buffer, img);
 //				}
-			}
+//			}
 		}
 
 
+		void filterDynamicTracks(FeatureTracks& trackMatrix, const int N){
+			const int stride = 5;
+			const double max_error = 2;
+
+			vector<bool> keep(trackMatrix.tracks.size(), true);
+
+			for(auto v=0; v<N-stride; ++v){
+				vector<cv::Point2f> pts1, pts2;
+				vector<size_t> trackId;
+				for(auto tid=0; tid<trackMatrix.tracks.size(); ++tid){
+					if(trackMatrix.offset[tid] <= v && trackMatrix.offset[tid]+trackMatrix.tracks[tid].size() >= v+stride){
+						pts1.push_back(trackMatrix.tracks[tid][v-trackMatrix.offset[tid]]);
+						pts2.push_back(trackMatrix.tracks[tid][v+stride-trackMatrix.offset[tid]]);
+					}
+				}
+			}
+		}
 	}//namespace Tracking
 }//namespace substab

@@ -12,8 +12,14 @@
 #include <glog/logging.h>
 
 namespace substab {
+	struct FeatureTracks{
+		std::vector<std::vector<cv::Point2f> > tracks;
+		std::vector<size_t> offset;
+	};
+
 	namespace Tracking {
-		void genTrackMatrix(const std::vector<cv::Mat>& images, cv::Mat& trackMatrix);
+		void genTrackMatrix(const std::vector<cv::Mat>& images, FeatureTracks& trackMatrix, const int tWindow, const int stride);
+		void filterDynamicTracks(FeatureTracks& trackMatrix, const int N);
 	}
 }
 #endif //SUBSPACESTAB_TRACKING_H
