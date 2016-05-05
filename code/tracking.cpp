@@ -37,15 +37,13 @@ namespace substab{
 				cv::buildOpticalFlowPyramid(grays[v], pyramid[v], cv::Size(winSizePyramid, winSizePyramid), nLevel);
 			}
 
-			for(auto v=0; v<50; v+=interval){
+			for(auto v=0; v<images.size() - tWindow - stride; v+=interval){
 				CHECK_EQ(trackMatrix.tracks.size(), trackMatrix.offset.size());
 				printf("==========================\n");
 				printf("Start frame: %d\n", v);
 				vector<cv::Point2f> corners;
-				printf("Computing putative features...\n");
 				cv::goodFeaturesToTrack(grays[v], corners, max_corners, quality_level, min_distance);
 				vector<cv::Point2f> newcorners;
-				printf("Removing existing tracks...\n");
 				newcorners.reserve(corners.size());
 				for(auto cid=0; cid < corners.size(); ++cid){
 					bool is_new = true;
@@ -61,7 +59,6 @@ namespace substab{
 						newcorners.push_back(corners[cid]);
 				}
 
-				printf("Tracking...\n");
 				vector<vector<cv::Point2f> > curTracks(newcorners.size());
 				for(auto i=0; i<curTracks.size(); ++i)
 					curTracks[i].push_back(newcorners[i]);
@@ -84,7 +81,6 @@ namespace substab{
 					newcorners.swap(tracked);
 				}
 
-				printf("Done. Filtering...\n");
 				for(auto i=0; i<curTracks.size(); ++i){
 					if(curTracks[i].size() < tWindow)
 						continue;

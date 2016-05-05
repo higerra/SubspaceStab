@@ -9,7 +9,7 @@
 
 namespace substab{
 
-    void movingFactorization(FeatureTracks& trackMatrixs, cv::Mat& coe, cv::Mat& bas, const int N, const int tWindow, const int stride);
+    void movingFactorization(const FeatureTracks& trackMatrixs, cv::Mat& coe, cv::Mat& bas, const int N, const int tWindow, const int stride);
 
 }//namespace substab
 #endif //SUBSPACESTAB_FACTORIZATION_H
