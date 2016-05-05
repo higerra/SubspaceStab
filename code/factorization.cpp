@@ -60,6 +60,7 @@ namespace substab{
 		    }
 
 		    //compute coefficient for incomplete track
+		    double partialError = 0.0;
 		    for(auto ftid=0; ftid < partialTrackInd.size(); ++ftid){
 			    const int idx = partialTrackInd[ftid];
 			    const int curL = (int)(trackMatrix.offset[idx]+trackMatrix.tracks[idx].size()-v);
@@ -75,6 +76,7 @@ namespace substab{
 			    cv::invert(temp,temp);
 			    Mat coe21 = A21 * bas21T * temp;
 			    coe21.copyTo(coe.rowRange(2*idx, 2*idx+2));
+			    Mat curpRecon = coe21 * curbas;
 			    is_computed[idx] = true;
 		    }
 
@@ -91,6 +93,7 @@ namespace substab{
 	    double accuError = 0.0;
 	    double count = 0.0;
 	    for(auto tid=0; tid<kTrack; ++tid){
+		    CHECK(is_computed[tid]);
 		    for(auto i=trackMatrix.offset[tid]; i<trackMatrix.tracks[tid].size() + trackMatrix.offset[tid]; ++i){
 			    cv::Point2f reconPt((float)recon.at<double>(2*tid, i), (float)recon.at<double>(2*tid+1, i));
 			    accuError += cv::norm(reconPt - trackMatrix.tracks[tid][i-trackMatrix.offset[tid]]);
