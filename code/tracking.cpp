@@ -89,28 +89,29 @@ namespace substab{
 				}
 			}
 
-			//for debugging
-//			{
-//				const int testStartFrame = 0;
-//				//collect trackes to visualize
-//				for(auto v=testStartFrame; v<images.size(); ++v){
-//					//if no tracks, break
-//					int kTrack = 0;
-//					Mat img = images[v].clone();
-//					for(auto tid=0; tid<trackMatrix.tracks.size(); ++tid) {
-//						if(trackMatrix.offset[tid] == testStartFrame && trackMatrix.tracks[tid].size() + trackMatrix.offset[tid] >= v) {
-//							cv::circle(img, trackMatrix.tracks[tid][v-trackMatrix.offset[tid]], 1, Scalar(0, 0, 255), 2);
-//							kTrack++;
-//						}
-//					}
-//					if(kTrack == 0)
-//						break;
-//					sprintf(buffer, "trackVis%05d_t%05d.jpg", testStartFrame, v);
-//					imwrite(buffer, img);
-//				}
-//			}
 		}
 
+		void visualizeTrack(const std::vector<cv::Mat>& images, const FeatureTracks& trackMatrix, const int startFrame) {
+			const int testStartFrame = startFrame;
+			char buffer[1024] = {};
+			//collect trackes to visualize
+			for (auto v = testStartFrame; v < images.size(); ++v) {
+				//if no tracks, break
+				int kTrack = 0;
+				Mat img = images[v].clone();
+				for (auto tid = 0; tid < trackMatrix.tracks.size(); ++tid) {
+					if (trackMatrix.offset[tid] == testStartFrame &&
+					    trackMatrix.tracks[tid].size() + trackMatrix.offset[tid] >= v) {
+						cv::circle(img, trackMatrix.tracks[tid][v - trackMatrix.offset[tid]], 1, Scalar(0, 0, 255), 2);
+						kTrack++;
+					}
+				}
+				if (kTrack == 0)
+					break;
+				sprintf(buffer, "trackVisOri%05d_t%05d.jpg", testStartFrame, v);
+				imwrite(buffer, img);
+			}
+		}
 
 		void filterDynamicTracks(FeatureTracks& trackMatrix, const int N){
 			const int stride = 5;

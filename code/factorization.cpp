@@ -54,15 +54,30 @@ namespace substab{
 
 		    for(auto ftid=0; ftid < fullTrackInd.size(); ++ftid){
 			    const int idx = fullTrackInd[ftid];
+			    if(is_computed[idx])
+				    continue;
 			    curcoe.row(ftid * 2).copyTo(coe.row(fullTrackInd[ftid] * 2));
 			    curcoe.row(ftid * 2 + 1).copyTo(coe.row(fullTrackInd[ftid] * 2 + 1));
 			    is_computed[fullTrackInd[ftid]] = true;
 		    }
 
+		    double fullReconError = 0.0;
+		    Mat reconA = curcoe * curbas;
+		    CHECK_EQ(A.size(), reconA.size());
+		    for(auto ftid=0; ftid<fullTrackInd.size(); ++ftid){
+			    for(auto v=0; v<tWindow; ++v){
+				    fullReconError += cv::norm(A(cv::Rect(v, 2*ftid, 1, 2)) - reconA(cv::Rect(v, 2*ftid,1,2)));
+			    }
+		    }
+		    printf("full track reconstruction error:%.3f\n", fullReconError / ((double)fullTrackInd.size() * tWindow));
+
 		    //compute coefficient for incomplete track
 		    double partialError = 0.0;
+		    double partialCount = 0.0;
 		    for(auto ftid=0; ftid < partialTrackInd.size(); ++ftid){
 			    const int idx = partialTrackInd[ftid];
+			    if(is_computed[idx])
+				    continue;
 			    const int curL = (int)(trackMatrix.offset[idx]+trackMatrix.tracks[idx].size()-v);
 			    Mat A21(2, curL, CV_64F, cv::Scalar::all(0));
 			    for(auto i=0; i<curL; ++i){
@@ -77,13 +92,17 @@ namespace substab{
 			    Mat coe21 = A21 * bas21T * temp;
 			    coe21.copyTo(coe.rowRange(2*idx, 2*idx+2));
 			    Mat curpRecon = coe21 * curbas;
+			    for(auto v=0; v<curL; ++v){
+				    partialError += cv::norm(curpRecon(cv::Rect(v,0,1,2))-A21(cv::Rect(v,0,1,2)));
+				    partialCount++;
+			    }
 			    is_computed[idx] = true;
 		    }
+		    printf("partial track reconstruction error:%.3f\n", partialError / partialCount);
 
 
-		    Mat reconA = curcoe * curbas;
 		    //Mat reconA = u * cv::Mat::diag(w) * vt;
-		    printf("reconstruction error:%.3f\n", cv::norm(reconA - A) / (double) A.rows);
+		    //printf("reconstruction error:%.3f\n", cv::norm(reconA - A) / (double) A.rows);
 	    }
 
 	    //compute overall approximation error
@@ -96,7 +115,8 @@ namespace substab{
 		    CHECK(is_computed[tid]);
 		    for(auto i=trackMatrix.offset[tid]; i<trackMatrix.tracks[tid].size() + trackMatrix.offset[tid]; ++i){
 			    cv::Point2f reconPt((float)recon.at<double>(2*tid, i), (float)recon.at<double>(2*tid+1, i));
-			    accuError += cv::norm(reconPt - trackMatrix.tracks[tid][i-trackMatrix.offset[tid]]);
+			    const cv::Point2f oriPt = trackMatrix.tracks[tid][i-trackMatrix.offset[tid]];
+			    accuError += std::sqrt((reconPt.x-oriPt.x) * (reconPt.x-oriPt.x) + (reconPt.y-oriPt.y) * (reconPt.y-oriPt.y));
 			    count += 1.0;
 		    }
 	    }

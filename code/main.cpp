@@ -35,11 +35,25 @@ int main(int argc, char** argv){
 
 	Mat coe, bas;
 	movingFactorization(trackMatrix, coe, bas, (int)images.size(), FLAGS_tWindow, FLAGS_stride);
-//	printf("%d frames read\n", (int)images.size());
-//	for(auto i=0; i<images.size(); ++i){
-//		sprintf(buffer, "frame%05d.jpg", i);
-//		imwrite(buffer, images[i]);
-//	}
+
+	{
+		//debug:
+		Mat recon = coe * bas;
+		FeatureTracks trackMatrix2;
+		trackMatrix2.offset = trackMatrix.offset;
+		trackMatrix2.tracks.resize(trackMatrix2.offset.size());
+		for(auto tid=0; tid < trackMatrix2.offset.size(); ++tid){
+			for(auto v=trackMatrix2.offset[tid]; v<trackMatrix2.offset[tid] + trackMatrix.tracks[tid].size(); ++v){
+				const double x = recon.at<double>(2*tid, v);
+				const double y = recon.at<double>(2*tid+1, v);
+				trackMatrix2.tracks[tid].push_back(cv::Point2f(x,y));
+			}
+		}
+		Tracking::visualizeTrack(images, trackMatrix2, 0);
+//		Tracking::visualizeTrack(images, trackMatrix, 0);
+	}
+
+
     return 0;
 }
 

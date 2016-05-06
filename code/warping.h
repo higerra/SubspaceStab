@@ -6,9 +6,9 @@
 #define SUBSPACESTAB_WARPPING_H
 
 namespace substab {
-    class Warping {
 
-    };
+
+
 }//namespace substab
 
 #endif //SUBSPACESTAB_WARPPING_H
