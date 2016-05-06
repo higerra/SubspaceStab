@@ -37,7 +37,7 @@ namespace substab{
 				cv::buildOpticalFlowPyramid(grays[v], pyramid[v], cv::Size(winSizePyramid, winSizePyramid), nLevel);
 			}
 
-			for(auto v=0; v<images.size() - tWindow - stride; v+=interval){
+			for(auto v=0; v<50; v+=interval){
 				CHECK_EQ(trackMatrix.tracks.size(), trackMatrix.offset.size());
 				printf("==========================\n");
 				printf("Start frame: %d\n", v);

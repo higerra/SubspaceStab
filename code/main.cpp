@@ -33,23 +33,23 @@ int main(int argc, char** argv){
 	Tracking::genTrackMatrix(images, trackMatrix, FLAGS_tWindow, FLAGS_stride);
 	printf("Done\n");
 
-	Mat coe, bas;
-	movingFactorization(trackMatrix, coe, bas, (int)images.size(), FLAGS_tWindow, FLAGS_stride);
+	Eigen::MatrixXd coe, bas;
+	movingFactorization(trackMatrix, coe, bas, 50, FLAGS_tWindow, FLAGS_stride);
 
 	{
 		//debug:
-		Mat recon = coe * bas;
-		FeatureTracks trackMatrix2;
-		trackMatrix2.offset = trackMatrix.offset;
-		trackMatrix2.tracks.resize(trackMatrix2.offset.size());
-		for(auto tid=0; tid < trackMatrix2.offset.size(); ++tid){
-			for(auto v=trackMatrix2.offset[tid]; v<trackMatrix2.offset[tid] + trackMatrix.tracks[tid].size(); ++v){
-				const double x = recon.at<double>(2*tid, v);
-				const double y = recon.at<double>(2*tid+1, v);
-				trackMatrix2.tracks[tid].push_back(cv::Point2f(x,y));
-			}
-		}
-		Tracking::visualizeTrack(images, trackMatrix2, 0);
+//		Mat recon = coe * bas;
+//		FeatureTracks trackMatrix2;
+//		trackMatrix2.offset = trackMatrix.offset;
+//		trackMatrix2.tracks.resize(trackMatrix2.offset.size());
+//		for(auto tid=0; tid < trackMatrix2.offset.size(); ++tid){
+//			for(auto v=trackMatrix2.offset[tid]; v<trackMatrix2.offset[tid] + trackMatrix.tracks[tid].size(); ++v){
+//				const double x = recon.at<double>(2*tid, v);
+//				const double y = recon.at<double>(2*tid+1, v);
+//				trackMatrix2.tracks[tid].push_back(cv::Point2f(x,y));
+//			}
+//		}
+//		Tracking::visualizeTrack(images, trackMatrix2, 0);
 //		Tracking::visualizeTrack(images, trackMatrix, 0);
 	}
 
