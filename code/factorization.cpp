@@ -75,7 +75,6 @@ namespace substab{
 			printf("v: %d/%d\n", v, N);
 			vector<int> preFullTrackInd;
 			vector<int> newFullTrackInd;
-			int A11Count = 0;
 			for (auto tid = 0; tid < kTrack; ++tid) {
 				if (trackMatrix.offset[tid] <= v &&
 					trackMatrix.offset[tid] + trackMatrix.tracks[tid].size() >= v + tWindow) {
@@ -101,10 +100,6 @@ namespace substab{
 			for (auto ftid = 0; ftid < preFullTrackInd.size(); ++ftid) {
 				const int idx = preFullTrackInd[ftid];
 				const int offset = (int) trackMatrix.offset[idx];
-				for (auto i = v; i < v + tWindow - stride; ++i) {
-					A11(ftid * 2, i - v) = trackMatrix.tracks[idx][i - offset].x;
-					A11(ftid * 2 + 1, i - v) = trackMatrix.tracks[idx][i - offset].y;
-				}
 				for (auto i = v + tWindow - stride; i < v + tWindow; ++i) {
 					A12(ftid * 2, i - v - tWindow + stride) = trackMatrix.tracks[idx][i - offset].x;
 					A12(ftid * 2 + 1, i - v - tWindow + stride) = trackMatrix.tracks[idx][i - offset].y;
@@ -135,10 +130,9 @@ namespace substab{
 					for (auto ftid = 0; ftid < preFullTrackInd.size(); ++ftid) {
 						const int idx = preFullTrackInd[ftid];
 						for (auto i = v; i < v + tWindow - stride; ++i) {
-//							Vector2d pt;
-//							pt[0] = trackMatrix.tracks[idx][i-trackMatrix.offset[idx]].x;
-//							pt[1] = trackMatrix.tracks[idx][i-trackMatrix.offset[idx]].y;
-							Vector2d pt = A11.block(2*ftid,i-v,2,1);
+							Vector2d pt;
+							pt[0] = trackMatrix.tracks[idx][i-trackMatrix.offset[idx]].x;
+							pt[1] = trackMatrix.tracks[idx][i-trackMatrix.offset[idx]].y;
 							Vector2d reconPt = fullA.block(2 * ftid, i - v, 2, 1);
 							preFullError += (reconPt - pt).norm();
 						}

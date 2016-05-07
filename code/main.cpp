@@ -34,7 +34,7 @@ int main(int argc, char** argv){
 	printf("Done\n");
 
 	Eigen::MatrixXd coe, bas;
-	movingFactorization(images, trackMatrix, coe, bas, 50, FLAGS_tWindow, FLAGS_stride);
+	movingFactorization(images, trackMatrix, coe, bas, images.size(), FLAGS_tWindow, FLAGS_stride);
 
 	{
 		//debug:
