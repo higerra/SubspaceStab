@@ -11,7 +11,7 @@ using namespace cv;
 using namespace Eigen;
 using namespace substab;
 
-DEFINE_int32(tWindow, 30, "tWindow");
+DEFINE_int32(tWindow, 50, "tWindow");
 DEFINE_int32(stride, 5, "Stride");
 
 void importVideo(const std::string& path, std::vector<cv::Mat>& images);
@@ -32,9 +32,12 @@ int main(int argc, char** argv){
 	printf("Computing track matrix...\n");
 	Tracking::genTrackMatrix(images, trackMatrix, FLAGS_tWindow, FLAGS_stride);
 	printf("Done\n");
+	//Tracking::filterDynamicTracks(trackMatrix, (int)images.size());
+
+	Tracking::visualizeTrack(images, trackMatrix, 10);
 
 	Eigen::MatrixXd coe, bas;
-	movingFactorization(images, trackMatrix, coe, bas, images.size(), FLAGS_tWindow, FLAGS_stride);
+	Factorization::movingFactorization(images, trackMatrix, coe, bas, (int)images.size(), FLAGS_tWindow, FLAGS_stride);
 
 	{
 		//debug:
@@ -50,7 +53,7 @@ int main(int argc, char** argv){
 //			}
 //		}
 //		Tracking::visualizeTrack(images, trackMatrix2, 0);
-//		Tracking::visualizeTrack(images, trackMatrix, 0);
+
 	}
 
 

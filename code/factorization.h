@@ -7,9 +7,15 @@
 
 #include "tracking.h"
 
-namespace substab{
+namespace substab {
 
-    void movingFactorization(const std::vector<cv::Mat>& images, const FeatureTracks& trackMatrixs, Eigen::MatrixXd& coe, Eigen::MatrixXd& bas, const int N, const int tWindow, const int stride);
+    namespace Factorization {
+        void movingFactorization(const std::vector<cv::Mat> &images, const FeatureTracks &trackMatrix,
+                                 Eigen::MatrixXd &coe, Eigen::MatrixXd &bas, const int N, const int tWindow,
+                                 const int stride);
 
+        void filterDynamicTrack(const FeatureTracks& trackMatrix, std::vector<int>& fullTrackInd, const int sf, const int tw, std::vector<bool>is_valid);
+
+    }//namespace Factorization
 }//namespace substab
 #endif //SUBSPACESTAB_FACTORIZATION_H

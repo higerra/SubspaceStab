@@ -22,13 +22,13 @@ namespace substab{
 			for(auto v=0; v<grays.size(); ++v)
 				cvtColor(images[v], grays[v], CV_BGR2GRAY);
 
-			const double quality_level = 0.02;
-			const double min_distance = 20;
+			const double quality_level = 0.05;
+			const double min_distance = 10;
 			const int winSizePyramid = 21;
-			const int nLevel = 2;
+			const int nLevel = 4;
 
 			const double max_diff_distance = 2;
-			const int max_corners = width * height / 64;
+			const int max_corners = 1000;
 			const int interval = 1;
 
 			printf("Building image pyramid...\n");
@@ -37,7 +37,7 @@ namespace substab{
 				cv::buildOpticalFlowPyramid(grays[v], pyramid[v], cv::Size(winSizePyramid, winSizePyramid), nLevel);
 			}
 
-			for(auto v=0; v<images.size() - tWindow; v+=interval){
+			for(auto v=0; v<images.size()-tWindow; v+=interval){
 				CHECK_EQ(trackMatrix.tracks.size(), trackMatrix.offset.size());
 				printf("==========================\n");
 				printf("Start frame: %d\n", v);
@@ -100,7 +100,7 @@ namespace substab{
 				int kTrack = 0;
 				Mat img = images[v].clone();
 				for (auto tid = 0; tid < trackMatrix.tracks.size(); ++tid) {
-					if (trackMatrix.offset[tid] == testStartFrame &&
+					if (trackMatrix.offset[tid] <= testStartFrame &&
 					    trackMatrix.tracks[tid].size() + trackMatrix.offset[tid] >= v) {
 						cv::circle(img, trackMatrix.tracks[tid][v - trackMatrix.offset[tid]], 1, Scalar(0, 0, 255), 2);
 						kTrack++;
@@ -123,10 +123,26 @@ namespace substab{
 				vector<cv::Point2f> pts1, pts2;
 				vector<size_t> trackId;
 				for(auto tid=0; tid<trackMatrix.tracks.size(); ++tid){
+					if(!keep[tid])
+						 continue;
 					if(trackMatrix.offset[tid] <= v && trackMatrix.offset[tid]+trackMatrix.tracks[tid].size() >= v+stride){
 						pts1.push_back(trackMatrix.tracks[tid][v-trackMatrix.offset[tid]]);
 						pts2.push_back(trackMatrix.tracks[tid][v+stride-trackMatrix.offset[tid]]);
+						trackId.push_back((size_t)tid);
 					}
+				}
+				Mat fMatrix = cv::findFundamentalMat(pts1, pts2);
+				Mat epilines;
+				computeCorrespondEpilines(pts1, 1, fMatrix, epilines);
+				for(auto ptid=0; ptid<pts1.size(); ++ptid){
+					Mat curepiline(3,1,CV_32F);
+					curepiline.at<float>(0,0) = epilines.at<Vec3f>(ptid,0)[0];
+					curepiline.at<float>(1,0) = epilines.at<Vec3f>(ptid,0)[1];
+					curepiline.at<float>(2,0) = epilines.at<Vec3f>(ptid,0)[2];
+					Mat curpt(3,1,CV_32F);
+					curpt.at<float>(0,0) = pts1[ptid].x;
+					curpt.at<float>(0,1) = pts1[ptid].y;
+					curpt.at<float>(0,2) = 1.0;
 				}
 			}
 		}
