@@ -34,25 +34,27 @@ int main(int argc, char** argv){
 	printf("Done\n");
 	//Tracking::filterDynamicTracks(trackMatrix, (int)images.size());
 
-	Tracking::visualizeTrack(images, trackMatrix, 10);
+	//Tracking::visualizeTrack(images, trackMatrix, 10);
 
-	Eigen::MatrixXd coe, bas;
+	Eigen::MatrixXd coe, bas, smoothedBas;
 	Factorization::movingFactorization(images, trackMatrix, coe, bas, (int)images.size(), FLAGS_tWindow, FLAGS_stride);
+
+	Factorization::trackSmoothing(bas, smoothedBas, 5, -1);
 
 	{
 		//debug:
-//		Mat recon = coe * bas;
-//		FeatureTracks trackMatrix2;
-//		trackMatrix2.offset = trackMatrix.offset;
-//		trackMatrix2.tracks.resize(trackMatrix2.offset.size());
-//		for(auto tid=0; tid < trackMatrix2.offset.size(); ++tid){
-//			for(auto v=trackMatrix2.offset[tid]; v<trackMatrix2.offset[tid] + trackMatrix.tracks[tid].size(); ++v){
-//				const double x = recon.at<double>(2*tid, v);
-//				const double y = recon.at<double>(2*tid+1, v);
-//				trackMatrix2.tracks[tid].push_back(cv::Point2f(x,y));
-//			}
-//		}
-//		Tracking::visualizeTrack(images, trackMatrix2, 0);
+		MatrixXd recon = coe * smoothedBas;
+		FeatureTracks trackMatrix2;
+		trackMatrix2.offset = trackMatrix.offset;
+		trackMatrix2.tracks.resize(trackMatrix2.offset.size());
+		for(auto tid=0; tid < trackMatrix2.offset.size(); ++tid){
+			for(auto v=trackMatrix2.offset[tid]; v<trackMatrix2.offset[tid] + trackMatrix.tracks[tid].size(); ++v){
+				const double x = recon(2*tid, v);
+				const double y = recon(2*tid+1, v);
+				trackMatrix2.tracks[tid].push_back(cv::Point2f(x,y));
+			}
+		}
+		Tracking::visualizeTrack(images, trackMatrix2, 10);
 
 	}
 

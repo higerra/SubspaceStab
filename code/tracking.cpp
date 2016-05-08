@@ -22,10 +22,10 @@ namespace substab{
 			for(auto v=0; v<grays.size(); ++v)
 				cvtColor(images[v], grays[v], CV_BGR2GRAY);
 
-			const double quality_level = 0.05;
+			const double quality_level = 0.1;
 			const double min_distance = 10;
 			const int winSizePyramid = 21;
-			const int nLevel = 4;
+			const int nLevel = 3;
 
 			const double max_diff_distance = 2;
 			const int max_corners = 1000;

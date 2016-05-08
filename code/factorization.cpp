@@ -18,19 +18,24 @@ namespace substab{
 			bas = MatrixXd(kBasis, N);
 
 			vector<bool> is_computed(kTrack, false);
-
+			vector<bool> is_valid(kTrack, true);
 			//factorize the first window
 			{
 				const int testV = 0;
 
 				vector<int> fullTrackInd;
 				for (auto tid = 0; tid < kTrack; ++tid) {
+					if(!is_valid[tid])
+						continue;
 					if (trackMatrix.offset[tid] <= testV) {
 						if (trackMatrix.tracks[tid].size() >= tWindow)
 							fullTrackInd.push_back(tid);
 					}
 				}
 				printf("First window, complete track: %d\n", (int) fullTrackInd.size());
+
+				filterDynamicTrack(images, trackMatrix, fullTrackInd, testV, tWindow, is_valid);
+
 				MatrixXd A((int) fullTrackInd.size() * 2, tWindow);
 
 				for (auto ftid = 0; ftid < fullTrackInd.size(); ++ftid) {
@@ -98,6 +103,8 @@ namespace substab{
 				vector<int> preFullTrackInd;
 				vector<int> newFullTrackInd;
 				for (auto tid = 0; tid < kTrack; ++tid) {
+					if(!is_valid[tid])
+						continue;
 					if (trackMatrix.offset[tid] <= v &&
 						trackMatrix.offset[tid] + trackMatrix.tracks[tid].size() >= v + tWindow) {
 						if (trackMatrix.offset[tid] <= v - stride) {
@@ -109,6 +116,9 @@ namespace substab{
 						}
 					}
 				}
+
+				filterDynamicTrack(images, trackMatrix,preFullTrackInd,v,tWindow,is_valid);
+				filterDynamicTrack(images, trackMatrix,newFullTrackInd,v,tWindow,is_valid);
 
 				printf("previous complete track:%d\n", (int) preFullTrackInd.size());
 				printf("new complete track:%d\n", (int) newFullTrackInd.size());
@@ -341,7 +351,7 @@ namespace substab{
 		}
 
 
-		void filterDynamicTrack(const FeatureTracks& trackMatrix, std::vector<int>& fullTrackInd, const int sf, const int tw, vector<bool>& is_valid){
+		void filterDynamicTrack(const std::vector<cv::Mat>& images, const FeatureTracks& trackMatrix, std::vector<int>& fullTrackInd, const int sf, const int tw, vector<bool>& is_valid){
 			CHECK_EQ(is_valid.size(), trackMatrix.offset.size());
 			vector<cv::Point2f> pts1, pts2;
 			for(auto ftid=0; ftid<fullTrackInd.size(); ++ftid){
@@ -352,9 +362,59 @@ namespace substab{
 			}
 
 			Mat fMatrix = cv::findFundamentalMat(pts1,pts2);
+			Mat epilines;
+			cv::computeCorrespondEpilines(pts1,1,fMatrix,epilines);
 
+			vector<int> inlierInd;
+			const double max_epiError = 3.0;
+			for(auto ptid=0; ptid<pts1.size(); ++ptid){
+				Vector3d pt(pts2[ptid].x, pts2[ptid].y, 1.0);
+				Vector3d epi(epilines.at<Vec3f>(ptid,0)[0],epilines.at<Vec3f>(ptid,0)[1],epilines.at<Vec3f>(ptid,0)[2]);
+				double epiError = pt.dot(epi);
+				if(epiError >= max_epiError)
+					is_valid[fullTrackInd[ptid]] = false;
+				else
+					inlierInd.push_back(fullTrackInd[ptid]);
+			}
+
+			{
+//				char buffer[1024] = {};
+//				Mat img1 = images[sf].clone();
+//				Mat img2 = images[sf + tw - 1].clone();
+//				const int testId = 100;
+//				cv::circle(img1, pts1[testId], 2, Scalar(0,0,255), 2);
+//				Vector3d testEpi(epilines.at<Vec3f>(testId,0)[0],epilines.at<Vec3f>(testId,0)[1],epilines.at<Vec3f>(testId,0)[2]);
+//				for(auto y=0; y<img2.rows; ++y){
+//					for(auto x=0; x<img2.cols; ++x){
+//						Vector3d loc(x,y,1);
+//						if(std::abs(loc.dot(testEpi)) < 1.0)
+//							cv::circle(img2, cv::Point2i(x,y), 1, cv::Scalar(255,0,0), 1);
+//					}
+//				}
+//				Mat himg;
+//				cv::hconcat(img1, img2, himg);
+//				sprintf(buffer, "epiTest_sf%d_tw%d_id%d.jpg", sf, tw, testId);
+//				imwrite(buffer, himg);
+			}
+
+			printf("%d out of %d tracks are inliers\n", (int)inlierInd.size(), (int)fullTrackInd.size());
+			fullTrackInd.swap(inlierInd);
 		}
 
+		void trackSmoothing(const Eigen::MatrixXd& input, Eigen::MatrixXd& output, const int r, const double sigma){
+			Mat gauKernelCV = cv::getGaussianKernel(2*r+1,sigma,CV_64F);
+			const double* pKernel = (double*) gauKernelCV.data;
+			output = MatrixXd::Zero(input.rows(), input.cols());
+			output.block(0,0,output.rows(), r) = input.block(0,0,input.rows(),r);
+			output.block(0,output.cols()-r,output.rows(),r) = input.block(0,input.cols()-r,input.rows(),r);
+			for(auto i=0; i<input.rows(); ++i){
+				for(auto j=r; j<input.cols()-r; ++j){
+					for(auto k=-1*r; k<=r; ++k){
+						output(i,j) += input(i,j+k) * pKernel[k+r];
+					}
+				}
+			}
+		}
 
 	}//namespace Factorization
 }//namespace substab

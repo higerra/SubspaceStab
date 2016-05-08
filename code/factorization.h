@@ -14,7 +14,9 @@ namespace substab {
                                  Eigen::MatrixXd &coe, Eigen::MatrixXd &bas, const int N, const int tWindow,
                                  const int stride);
 
-        void filterDynamicTrack(const FeatureTracks& trackMatrix, std::vector<int>& fullTrackInd, const int sf, const int tw, std::vector<bool>is_valid);
+        void filterDynamicTrack(const std::vector<cv::Mat>& images, const FeatureTracks& trackMatrix, std::vector<int>& fullTrackInd, const int sf, const int tw, std::vector<bool>& is_valid);
+
+	    void trackSmoothing(const Eigen::MatrixXd& input, Eigen::MatrixXd& output, const int r, const double sigma);
 
     }//namespace Factorization
 }//namespace substab
