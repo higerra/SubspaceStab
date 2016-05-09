@@ -22,13 +22,13 @@ namespace substab{
 			for(auto v=0; v<grays.size(); ++v)
 				cvtColor(images[v], grays[v], CV_BGR2GRAY);
 
-			const double quality_level = 0.02;
-			const double min_distance = 50;
+			const double quality_level = 0.01;
+			const double min_distance = 5;
 			const int winSizePyramid = 21;
 			const int nLevel = 3;
 
-			const double max_diff_distance = 2;
-			const int max_corners = 2000;
+			const double max_diff_distance = 1;
+			const int max_corners = 500;
 			const int interval = 1;
 
 			printf("Building image pyramid...\n");
@@ -114,7 +114,7 @@ namespace substab{
 
 		void filterDynamicTracks(FeatureTracks& trackMatrix, const int N){
 			const int stride = 5;
-			const double max_error = 2;
+			const double max_error = 1;
 			const double max_ratio = 0.3;
 
 			vector<bool> keep(trackMatrix.tracks.size(), true);

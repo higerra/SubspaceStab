@@ -9,17 +9,16 @@ using namespace Eigen;
 namespace substab{
 	namespace Factorization {
 		void movingFactorization(const vector<Mat> &images, const FeatureTracks &trackMatrix, Eigen::MatrixXd &coe,
-								 Eigen::MatrixXd &bas, std::vector<bool>& is_computed, const int tWindow, const int stride) {
+								 Eigen::MatrixXd &bas, vector<vector<bool> >& wMatrix, const int tWindow, const int stride) {
 			const int kBasis = 9;
 			const int kTrack = (int) trackMatrix.tracks.size();
 			char buffer[1024] = {};
 			const int N = (int)images.size();
 
-			coe = MatrixXd(2 * kTrack, kBasis);
-			bas = MatrixXd(kBasis, N);
+			vector<bool> is_computed(kTrack, false);
 
-			is_computed.resize(kTrack, false);
-			vector<bool> is_valid(kTrack, true);
+			coe = MatrixXd::Zero(2 * kTrack, kBasis);
+			bas = MatrixXd::Zero(kBasis, N);
 
 			const int testV = 0;
 			//factorize the first window
@@ -27,13 +26,13 @@ namespace substab{
 				vector<int> fullTrackInd;
 				for (auto tid = 0; tid < kTrack; ++tid) {
 					if (trackMatrix.offset[tid] <= testV) {
-						if (trackMatrix.tracks[tid].size() >= tWindow)
+						if (trackMatrix.offset[tid] + trackMatrix.tracks[tid].size() >= tWindow + testV)
 							fullTrackInd.push_back(tid);
 					}
 				}
 				printf("First window, complete track: %d\n", (int) fullTrackInd.size());
 
-				//filterDynamicTrack(images, trackMatrix, fullTrackInd, testV, tWindow, is_valid);
+				//filterDynamicTrack(images, trackMatrix, fullTrackInd, testV, tWindow, wMatrix);
 
 				MatrixXd A((int) fullTrackInd.size() * 2, tWindow);
 
@@ -55,8 +54,8 @@ namespace substab{
 				bas.block(0, testV, kBasis, tWindow) = curbas;
 				for (auto ftid = 0; ftid < fullTrackInd.size(); ++ftid) {
 					const int idx = fullTrackInd[ftid];
-					is_computed[idx] = true;
 					coe.block(2 * idx, 0, 2, kBasis) = curcoe.block(2 * ftid, 0, 2, kBasis);
+					is_computed[idx] = true;
 				}
 
 				{
@@ -66,19 +65,24 @@ namespace substab{
 					CHECK_EQ(reconA.cols(), A.cols());
 					CHECK_EQ(reconA.rows(), A.rows());
 					double reconError = 0.0;
+					double count = 0.0;
 					for (auto ftid = 0; ftid < fullTrackInd.size(); ++ftid) {
 						const int idx = fullTrackInd[ftid];
 						const int offset = (int) trackMatrix.offset[idx];
 						for (auto i = testV; i < tWindow + testV; ++i) {
 							Vector2d oriPt;
+							CHECK_LT(i-offset, trackMatrix.tracks[idx].size()) << i << ' ' << offset;
+							CHECK_GE(i-offset, 0) << i << ' ' << offset;
 							oriPt[0] = trackMatrix.tracks[idx][i - offset].x;
 							oriPt[1] = trackMatrix.tracks[idx][i - offset].y;
 							Vector2d reconPt = reconA.block(ftid * 2, i - testV, 2, 1);
+							count += 1.0;
 							reconError += (oriPt - reconPt).norm();
 						}
 					}
-					printf("Reconstruction error for first window: %.3f\n",
-						   reconError / ((double) fullTrackInd.size() * tWindow));
+					printf("Reconstruction error for first window: %.3f/%d=%.3f\n",
+						   reconError,(int)count, reconError / count);
+
 //					for (auto i = testV; i < testV + tWindow; ++i) {
 //						Mat outImg = images[i].clone();
 //						for (auto ftid = 0; ftid < fullTrackInd.size(); ++ftid) {
@@ -97,17 +101,25 @@ namespace substab{
 			}
 
 			//moving factorization
-			for (auto v = stride + testV; v < N - tWindow; v += stride) {
+			for (auto v = stride + testV; v <= N - tWindow; v += stride) {
 				printf("-------------------\nv: %d/%d\n", v, N);
 				vector<int> preFullTrackInd;
 				vector<int> newFullTrackInd;
 				for (auto tid = 0; tid < kTrack; ++tid) {
-					if(!is_valid[tid])
-						continue;
 					if (trackMatrix.offset[tid] <= v &&
 						trackMatrix.offset[tid] + trackMatrix.tracks[tid].size() >= v + tWindow) {
+						bool is_valid = true;
+						for(auto i=v; i<v+tWindow; ++i){
+							if(!wMatrix[tid][i]) {
+								is_valid = false;
+								break;
+							}
+						}
+						if(!is_valid)
+							continue;
 						if (trackMatrix.offset[tid] <= v - stride) {
 							//complete track inside previous window
+							CHECK(is_computed[tid]);
 							preFullTrackInd.push_back(tid);
 						} else {
 							//new complete track
@@ -116,13 +128,8 @@ namespace substab{
 					}
 				}
 
-//				filterDynamicTrack(images, trackMatrix, preFullTrackInd, v, tWindow, is_valid);
-//				filterDynamicTrack(images, trackMatrix, newFullTrackInd, v, tWindow, is_valid);
-//
-//				for(auto tid=0; tid<is_valid.size(); ++tid){
-//					if(!is_valid[tid])
-//						is_computed[tid] = false;
-//				}
+//				filterDynamicTrack(images, trackMatrix, preFullTrackInd, v, tWindow, wMatrix);
+//				filterDynamicTrack(images, trackMatrix, newFullTrackInd, v, tWindow, wMatrix);
 
 				MatrixXd A12((int) preFullTrackInd.size() * 2, stride);
 				MatrixXd A2((int) newFullTrackInd.size() * 2, tWindow);
@@ -133,22 +140,23 @@ namespace substab{
 
 				for (auto ftid = 0; ftid < preFullTrackInd.size(); ++ftid) {
 					const int idx = preFullTrackInd[ftid];
-					CHECK(is_computed[idx]);
 					const int offset = (int) trackMatrix.offset[idx];
+					CHECK(is_computed[idx]);
 					for (auto i = v + tWindow - stride; i < v + tWindow; ++i) {
+						CHECK_GE(i-offset, 0);
+						CHECK_LT(i-offset, trackMatrix.tracks[idx].size());
 						A12(ftid * 2, i - v - tWindow + stride) = trackMatrix.tracks[idx][i - offset].x;
 						A12(ftid * 2 + 1, i - v - tWindow + stride) = trackMatrix.tracks[idx][i - offset].y;
 					}
-					for (auto i = 0; i < kBasis; ++i) {
-						C1(ftid * 2, i) = coe(idx * 2, i);
-						C1(ftid * 2 + 1, i) = coe(idx * 2 + 1, i);
-					}
+					C1.block(ftid*2, 0, 2, C1.cols()) = coe.block(idx*2,0,2,coe.cols());
 				}
 
 				for (auto ftid = 0; ftid < newFullTrackInd.size(); ++ftid) {
 					const int idx = newFullTrackInd[ftid];
 					const int offset = (int) trackMatrix.offset[idx];
 					for (auto i = v; i < v + tWindow; ++i) {
+						CHECK_GE(i-offset, 0);
+						CHECK_LT(i-offset, trackMatrix.tracks[idx].size());
 						A2(ftid * 2, i - v) = trackMatrix.tracks[idx][i - offset].x;
 						A2(ftid * 2 + 1, i - v) = trackMatrix.tracks[idx][i - offset].y;
 					}
@@ -169,6 +177,8 @@ namespace substab{
 				largeA << A12,
 						A22;
 				MatrixXd E2 = (largeC.transpose() * largeC).inverse() * largeC.transpose() * largeA;
+				CHECK_EQ(E2.rows(), kBasis);
+				CHECK_EQ(E2.cols(), stride);
 				bas.block(0, v + tWindow - stride, bas.rows(), stride) = E2;
 				for (auto ftid = 0; ftid < newFullTrackInd.size(); ++ftid) {
 					const int idx = newFullTrackInd[ftid];
@@ -176,77 +186,175 @@ namespace substab{
 					is_computed[idx] = true;
 				}
 
-
 				{
+					//error A12
+					double errorA12 = 0.0, countA12 = 0.0;
+					MatrixXd reconA12 = C1 * bas.block(0,v+tWindow-stride,kBasis,stride);
+					for(auto ftid=0; ftid<preFullTrackInd.size(); ++ftid){
+						for(auto i=0; i<stride; ++i){
+							Vector2d oriPt = A12.block(ftid*2,i,2,1);
+							Vector2d reconPt = reconA12.block(ftid*2, i, 2,1);
+							errorA12 += (oriPt-reconPt).norm();
+							countA12 += 1.0;
+						}
+					}
+					printf("Reconstruction error for A12: %.3f\n", errorA12 / countA12);
+
 					//sanity check: compute reconstruction error in current window
 					MatrixXd reconA = C2 * bas.block(0, v, bas.rows(), tWindow);
 					CHECK_EQ(reconA.rows(), A2.rows());
 					CHECK_EQ(reconA.cols(), A2.cols());
 					double newTrackError = 0.0;
+					double countNewTrack = 0.0;
 					for (auto ftid = 0; ftid < newFullTrackInd.size(); ++ftid) {
 						const int idx = newFullTrackInd[ftid];
 						const int offset = (int) trackMatrix.offset[idx];
 						for (auto i = v; i < v + tWindow; ++i) {
 							Vector2d oriPt;
+							CHECK_GE(i-offset, 0);
+							CHECK_LT(i-offset, trackMatrix.tracks[idx].size());
 							oriPt[0] = trackMatrix.tracks[idx][i - offset].x;
 							oriPt[1] = trackMatrix.tracks[idx][i - offset].y;
 							Vector2d reconPt = reconA.block(2 * ftid, i - v, 2, 1);
 							newTrackError += (reconPt - oriPt).norm();
+							countNewTrack += 1.0;
 						}
 					}
 
-					MatrixXd fullA = C1 * bas.block(0, v, bas.rows(), tWindow);
+					MatrixXd fullA = C1 * bas.block(0, v-stride, bas.rows(), tWindow);
 					double preFullError = 0.0;
+					double countPreTrack = 0.0;
 					for (auto ftid = 0; ftid < preFullTrackInd.size(); ++ftid) {
 						const int idx = preFullTrackInd[ftid];
 						const int offset = (int) trackMatrix.offset[idx];
-						for (auto i = v; i < v + tWindow; ++i) {
+						for (auto i = v-stride; i < v + tWindow-stride; ++i) {
 							Vector2d pt;
+							CHECK_GE(i-offset, 0);
+							CHECK_LT(i-offset, trackMatrix.tracks[idx].size());
 							pt[0] = trackMatrix.tracks[idx][i - offset].x;
 							pt[1] = trackMatrix.tracks[idx][i - offset].y;
-							Vector2d reconPt = fullA.block(2 * ftid, i - v, 2, 1);
+							Vector2d reconPt = fullA.block(2 * ftid, i - v + stride, 2, 1);
 							preFullError += (reconPt - pt).norm();
+							countPreTrack += 1.0;
 						}
 					}
-					printf("Reconstruction error: pre full:%.3f, new full:%.3f, overall: %.3f\n",
-						   preFullError / ((double) preFullTrackInd.size() * tWindow),
-						   newTrackError / ((double) newFullTrackInd.size() * tWindow),
-						   (preFullError + newTrackError) /
-						   (((double) preFullTrackInd.size() + (double) newFullTrackInd.size()) * tWindow));
+
+					double preFullError2 = 0.0;
+					double countPreTrack2 = 0.0;
+					MatrixXd fullA2 = C1 * bas.block(0, v, bas.rows(), tWindow);
+					for(auto ftid=0; ftid < preFullTrackInd.size(); ++ftid){
+						const int idx = preFullTrackInd[ftid];
+						const int offset = (int)trackMatrix.offset[idx];
+						for (auto i = v; i < v + tWindow; ++i) {
+							Vector2d pt;
+							CHECK_GE(i-offset, 0);
+							CHECK_LT(i-offset, trackMatrix.tracks[idx].size());
+							pt[0] = trackMatrix.tracks[idx][i - offset].x;
+							pt[1] = trackMatrix.tracks[idx][i - offset].y;
+							Vector2d reconPt = fullA2.block(2 * ftid, i - v, 2, 1);
+							preFullError2 += (reconPt - pt).norm();
+							countPreTrack2 += 1.0;
+						}
+					}
+
+					printf("Reconstruction error: pre full:%.3f, pre full2: %.3f, new full:%.3f, overall: %.3f\n",
+						   preFullError / countPreTrack,
+						   preFullError2 / countPreTrack2,
+						   newTrackError / countNewTrack,
+						   (preFullError2 + newTrackError) / (countPreTrack2 + countNewTrack));
+				}
+
+				{
+					vector<int> fullNextWindow;
+					for (auto ftid = 0; ftid < preFullTrackInd.size(); ++ftid) {
+						const int idx = preFullTrackInd[ftid];
+						const int offset = (int)trackMatrix.offset[idx];
+						if(offset+trackMatrix.tracks[idx].size() >= v+tWindow+stride)
+							fullNextWindow.push_back(idx);
+					}
+					for (auto ftid = 0; ftid < newFullTrackInd.size(); ++ftid) {
+						const int idx = newFullTrackInd[ftid];
+						const int offset = (int)trackMatrix.offset[idx];
+						if(offset+trackMatrix.tracks[idx].size() >= v+tWindow+stride)
+							fullNextWindow.push_back(idx);
+					}
+					MatrixXd C3 = MatrixXd::Zero((int)fullNextWindow.size()*2, kBasis);
+					for(auto ftid=0; ftid<fullNextWindow.size(); ++ftid){
+						const int idx = fullNextWindow[ftid];
+						C3.block(ftid*2,0,2,kBasis) = coe.block(2*idx,0,2,kBasis);
+					}
+					MatrixXd reconNext = C3 * bas.block(0,v,kBasis,tWindow);
+					double nextError = 0.0;
+					double nextCount = 0.0;
+					for(auto ftid=0; ftid<fullNextWindow.size(); ++ftid){
+						const int idx = fullNextWindow[ftid];
+						const int offset = (int)trackMatrix.offset[idx];
+						for(auto i=v; i<v+tWindow; ++i) {
+							Vector2d oript(trackMatrix.tracks[idx][i-offset].x,trackMatrix.tracks[idx][i-offset].y);
+							Vector2d reconPt = reconNext.block(ftid*2,i-v,2,1);
+							nextError += (reconPt - oript).norm();
+							nextCount++;
+						}
+					}
+					printf("Full track in next window: %d, Anticipated error: %.3f\n", (int)fullNextWindow.size(), nextError/nextCount);
 				}
 
 			}
+
+			//compute overall error
 
 		}
 
 
 		void filterDynamicTrack(const std::vector<cv::Mat>& images, const FeatureTracks& trackMatrix, std::vector<int>& fullTrackInd,
-								const int sf, const int tw, vector<bool>& is_valid){
-			vector<cv::Point2f> pts1, pts2;
-			for(auto ftid=0; ftid<fullTrackInd.size(); ++ftid){
-				const int idx = fullTrackInd[ftid];
-				const int offset = (int)trackMatrix.offset[idx];
-				pts1.push_back(trackMatrix.tracks[idx][sf-offset]);
-				pts2.push_back(trackMatrix.tracks[idx][sf+tw-1-offset]);
-			}
+								const int sf, const int tw, vector<vector<bool> >& wMatrix){
+			const double max_ratio = 0.33;
+			vector<double> totalCount(fullTrackInd.size(), 0.0);
+			vector<double> outlierCount(fullTrackInd.size(), 0.0);
+			const double max_epiError = 2.0;
+			const int stride = 5;
 
-			Mat fMatrix = cv::findFundamentalMat(pts1,pts2);
-			Mat epilines;
-			cv::computeCorrespondEpilines(pts1,1,fMatrix,epilines);
+			for(auto v=0; v<sf+tw-stride; v+=stride) {
+				vector<cv::Point2f> pts1, pts2;
+				vector<size_t> trackId;
+				for (auto ftid = 0; ftid < fullTrackInd.size(); ++ftid) {
+					const int idx = fullTrackInd[ftid];
+					const int offset = (int) trackMatrix.offset[idx];
+					if(offset <= v && offset+trackMatrix.tracks[idx].size() >= v+stride) {
+						pts1.push_back(trackMatrix.tracks[idx][v]);
+						pts2.push_back(trackMatrix.tracks[idx][v+stride-1]);
+						trackId.push_back(ftid);
+					}
+				}
+				if(trackId.size() < 8)
+					continue;
+				Mat fMatrix = cv::findFundamentalMat(pts1, pts2);
+				if(fMatrix.cols != 3)
+					continue;
+				Mat epilines;
+				cv::computeCorrespondEpilines(pts1, 1, fMatrix, epilines);
+				for(auto ptid=0; ptid<trackId.size(); ++ptid){
+					Vector3d epi(epilines.at<Vec3f>(ptid,0)[0], epilines.at<Vec3f>(ptid,0)[1], epilines.at<Vec3f>(ptid,0)[2]);
+					Vector3d pt(pts2[ptid].x, pts2[ptid].y, 1.0);
+					totalCount[trackId[ptid]] += 1.0;
+					if(epi.dot(pt) > max_epiError)
+						outlierCount[trackId[ptid]] += 1.0;
+				}
+			}
 
 			vector<int> inlierInd;
-			const double max_epiError = 2.0;
-			for(auto ptid=0; ptid<pts1.size(); ++ptid){
-				Vector3d pt(pts2[ptid].x, pts2[ptid].y, 1.0);
-				Vector3d epi(epilines.at<Vec3f>(ptid,0)[0],epilines.at<Vec3f>(ptid,0)[1],epilines.at<Vec3f>(ptid,0)[2]);
-				double epiError = pt.dot(epi);
-				if(epiError >= max_epiError) {
-					is_valid[fullTrackInd[ptid]] = false;
-				}
-				else {
-					inlierInd.push_back(fullTrackInd[ptid]);
+
+			for(auto i=0; i<fullTrackInd.size(); ++i){
+				if(outlierCount[i] / max_ratio <= totalCount[i])
+					inlierInd.push_back(fullTrackInd[i]);
+				else{
+					for(auto v=sf; v<wMatrix[fullTrackInd[i]].size(); ++v)
+						wMatrix[fullTrackInd[i]][v] = false;
 				}
 			}
+
+			printf("%d out of %d tracks are kept\n", (int)inlierInd.size(), (int)fullTrackInd.size());
+			fullTrackInd.swap(inlierInd);
 
 			{
 //				char buffer[1024] = {};
@@ -267,9 +375,6 @@ namespace substab{
 //				sprintf(buffer, "epiTest_sf%d_tw%d_id%d.jpg", sf, tw, testId);
 //				imwrite(buffer, himg);
 			}
-
-			printf("%d out of %d tracks are inliers\n", (int)inlierInd.size(), (int)fullTrackInd.size());
-			fullTrackInd.swap(inlierInd);
 		}
 
 		void trackSmoothing(const Eigen::MatrixXd& input, Eigen::MatrixXd& output, const int r, const double sigma){
@@ -280,7 +385,7 @@ namespace substab{
 				for(auto j=0; j<input.cols(); ++j){
 					double sum = 0.0;
 					for(auto k=-1*r; k<=r; ++k){
-						if(k < 0 || k >= input.cols())
+						if(j+k < 0 || j+k >= input.cols())
 							continue;
 						sum += pKernel[k+r];
 						output(i,j) += input(i,j+k) * pKernel[k+r];

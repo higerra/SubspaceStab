@@ -102,7 +102,7 @@ namespace substab{
 		}
 
 		const double wdata = 1.0;
-		const double wsimilarity = 2.0;
+		const double wsimilarity = 1.0;
 
 		ceres::Problem problem;
 		//data term
