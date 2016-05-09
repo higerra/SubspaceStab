@@ -24,6 +24,7 @@ int main(int argc, char** argv){
 		return 1;
 	}
 	google::InitGoogleLogging(argv[0]);
+	google::ParseCommandLineFlags(&argc, &argv, true);
 	char buffer[1024] = {};
 	vector<Mat> images;
 	printf("Reading video...\n");
@@ -44,9 +45,9 @@ int main(int argc, char** argv){
 	//Tracking::visualizeTrack(images, trackMatrix, 10);
 
 	Eigen::MatrixXd coe, bas, smoothedBas;
-	vector<vector<bool> > wMatrix(trackMatrix.offset.size());
+	vector<vector<int> > wMatrix(trackMatrix.offset.size());
 	for(auto tid=0; tid<wMatrix.size(); ++tid)
-		wMatrix[tid].resize(images.size(), true);
+		wMatrix[tid].resize(images.size(), 0);
 
 	Factorization::movingFactorization(images, trackMatrix, coe, bas, wMatrix, FLAGS_tWindow, FLAGS_stride);
 
@@ -62,21 +63,21 @@ int main(int argc, char** argv){
 
 	//reconstruction error
 	double overallError = 0.0;
-	double count = 0.0;
+	double overallCount = 0.0;
 	for(auto tid=0; tid<trackMatrix.offset.size(); ++tid){
 		const int offset = (int)trackMatrix.offset[tid];
 		for(auto v=offset; v<offset+trackMatrix.tracks[tid].size(); ++v){
-			if(!wMatrix[tid][v])
+			if(wMatrix[tid][v] != 1)
 				continue;
 			if(v >= images.size() - FLAGS_tWindow)
 				continue;
 			Vector2d oriPt(trackMatrix.tracks[tid][v-offset].x,trackMatrix.tracks[tid][v-offset].y);
 			Vector2d reconPt = reconOri.block(2*tid, v, 2, 1);
-			count += 1.0;
+			overallCount += 1.0;
 			overallError += (reconPt-oriPt).norm();
 		}
 	}
-	printf("Overall reconstruction error:%d/%d=%.3f\n", (int)overallError, (int)count, overallError / count);
+	printf("Overall reconstruction error:%d/%d=%.3f\n", (int)overallError, (int)overallCount, overallError / overallCount);
 
 	printf("Warping...\n");
 
@@ -89,7 +90,7 @@ int main(int argc, char** argv){
 		}
 	}
 
-	vector<Mat> warped(images.size());
+	vector<Mat> warped(images.size()-FLAGS_tWindow);
 	const int num_thread = 7;
 	vector<thread_guard> threads((size_t) num_thread);
 	auto threadFunWarp = [&](int threadId) {
@@ -97,9 +98,12 @@ int main(int argc, char** argv){
 			vector<Vector2d> pts1, pts2;
 			for (auto tid = 0; tid < trackMatrix.offset.size(); ++tid) {
 				const int offset = (int) trackMatrix.offset[tid];
+				if(wMatrix[tid][v] != 1)
+					continue;
 				if (trackMatrix.offset[tid] <= v && offset + trackMatrix.tracks.size() >= v && wMatrix[tid][v]) {
 					pts1.push_back(Vector2d(reconOri(2 * tid, v), reconOri(2 * tid + 1, v)));
 					pts2.push_back(Vector2d(reconSmo(2 * tid, v), reconSmo(2 * tid + 1, v)));
+//					printf("(%.3f,%.3f), (%.3f,%.3f)\n", pts1.back()[0], pts1.back()[1], pts2.back()[0], pts2.back()[1]);
 				}
 			}
 			printf("Frame %d on thread %d\n", v, threadId);
@@ -110,86 +114,87 @@ int main(int argc, char** argv){
 		}
 	};
 
-//	for(auto tid=0; tid<threads.size(); ++tid){
-//		std::thread t(threadFunWarp, tid);
-//		threads[tid].bind(t);
-//	}
-//
-//	for(auto& t: threads)
-//		t.join();
-//
+	for(auto tid=0; tid<threads.size(); ++tid){
+		std::thread t(threadFunWarp, tid);
+		threads[tid].bind(t);
+	}
+
+	for(auto& t: threads)
+		t.join();
+
+
 //	//crop
-//	int top=0, bottom=warped[0].rows-1, left=0, right=warped[0].cols-1;
-//	for(;top<warped[0].rows; ++top){
-//		bool is_border = false;
-//		for(auto v=0; v<warped.size(); ++v){
-//			for(auto x=0; x<warped[v].cols; ++x) {
-//				Vec3b pix = warped[v].at<Vec3b>(top, x);
-//				if(pix == Vec3b(0,0,0)){
-//					is_border = true;
-//					break;
-//				}
-//			}
-//			if(is_border)
-//				break;
-//		}
-//		if(!is_border)
-//			break;
-//	}
-//	for(; bottom>=0; --bottom){
-//		bool is_border = false;
-//		for(auto v=0; v<warped.size(); ++v){
-//			for(auto x=0; x<warped[v].cols; ++x) {
-//				Vec3b pix = warped[v].at<Vec3b>(bottom, x);
-//				if(pix == Vec3b(0,0,0)){
-//					is_border = true;
-//					break;
-//				}
-//			}
-//			if(is_border)
-//				break;
-//		}
-//		if(!is_border)
-//			break;
-//	}
-//	for(; right>=0; --right){
-//		bool is_border = false;
-//		for(auto v=0; v<warped.size(); ++v){
-//			for(auto y=0; y<warped[v].rows; ++y) {
-//				Vec3b pix = warped[v].at<Vec3b>(y, right);
-//				if(pix == Vec3b(0,0,0)){
-//					is_border = true;
-//					break;
-//				}
-//			}
-//			if(is_border)
-//				break;
-//		}
-//		if(!is_border)
-//			break;
-//	}
-//	for(; left<warped[0].cols; ++left){
-//		bool is_border = false;
-//		for(auto v=0; v<warped.size(); ++v){
-//			for(auto y=0; y<warped[v].rows; ++y) {
-//				Vec3b pix = warped[v].at<Vec3b>(y, left);
-//				if(pix == Vec3b(0,0,0)){
-//					is_border = true;
-//					break;
-//				}
-//			}
-//			if(is_border)
-//				break;
-//		}
-//		if(!is_border)
-//			break;
-//	}
-//	printf("Range:(%d,%d,%d,%d)\n", left, right, top, bottom);
-//	for(auto v=0; v<warped.size()-FLAGS_tWindow; ++v){
-//		//Mat out = warped[v].colRange(left,right).rowRange(top,bottom);
-//		sprintf(buffer, "warped%05d.jpg", v);
-//		imwrite(buffer, warped[v]);
-//	}
+	int top=0, bottom=warped[0].rows-1, left=0, right=warped[0].cols-1;
+	for(;top<warped[0].rows; ++top){
+		bool is_border = false;
+		for(auto v=0; v<warped.size(); ++v){
+			for(auto x=0; x<warped[v].cols; ++x) {
+				Vec3b pix = warped[v].at<Vec3b>(top, x);
+				if(pix == Vec3b(0,0,0)){
+					is_border = true;
+					break;
+				}
+			}
+			if(is_border)
+				break;
+		}
+		if(!is_border)
+			break;
+	}
+	for(; bottom>=0; --bottom){
+		bool is_border = false;
+		for(auto v=0; v<warped.size(); ++v){
+			for(auto x=0; x<warped[v].cols; ++x) {
+				Vec3b pix = warped[v].at<Vec3b>(bottom, x);
+				if(pix == Vec3b(0,0,0)){
+					is_border = true;
+					break;
+				}
+			}
+			if(is_border)
+				break;
+		}
+		if(!is_border)
+			break;
+	}
+	for(; right>=0; --right){
+		bool is_border = false;
+		for(auto v=0; v<warped.size(); ++v){
+			for(auto y=0; y<warped[v].rows; ++y) {
+				Vec3b pix = warped[v].at<Vec3b>(y, right);
+				if(pix == Vec3b(0,0,0)){
+					is_border = true;
+					break;
+				}
+			}
+			if(is_border)
+				break;
+		}
+		if(!is_border)
+			break;
+	}
+	for(; left<warped[0].cols; ++left){
+		bool is_border = false;
+		for(auto v=0; v<warped.size(); ++v){
+			for(auto y=0; y<warped[v].rows; ++y) {
+				Vec3b pix = warped[v].at<Vec3b>(y, left);
+				if(pix == Vec3b(0,0,0)){
+					is_border = true;
+					break;
+				}
+			}
+			if(is_border)
+				break;
+		}
+		if(!is_border)
+			break;
+	}
+	printf("Range:(%d,%d,%d,%d)\n", left, right, top, bottom);
+	for(auto v=0; v<warped.size(); ++v){
+		//Mat out = warped[v].colRange(left,right).rowRange(top,bottom);
+		sprintf(buffer, "warped%05d.jpg", v);
+		imwrite(buffer, warped[v]);
+	}
 
 
 	{

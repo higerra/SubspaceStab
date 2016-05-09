@@ -23,12 +23,12 @@ namespace substab{
 				cvtColor(images[v], grays[v], CV_BGR2GRAY);
 
 			const double quality_level = 0.01;
-			const double min_distance = 5;
+			const double min_distance = 3;
 			const int winSizePyramid = 21;
 			const int nLevel = 3;
 
 			const double max_diff_distance = 1;
-			const int max_corners = 500;
+			const int max_corners = 600;
 			const int interval = 1;
 
 			printf("Building image pyramid...\n");

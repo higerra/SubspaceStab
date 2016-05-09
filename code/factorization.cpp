@@ -9,7 +9,7 @@ using namespace Eigen;
 namespace substab{
 	namespace Factorization {
 		void movingFactorization(const vector<Mat> &images, const FeatureTracks &trackMatrix, Eigen::MatrixXd &coe,
-								 Eigen::MatrixXd &bas, vector<vector<bool> >& wMatrix, const int tWindow, const int stride) {
+								 Eigen::MatrixXd &bas, vector<vector<int> >& wMatrix, const int tWindow, const int stride) {
 			const int kBasis = 9;
 			const int kTrack = (int) trackMatrix.tracks.size();
 			char buffer[1024] = {};
@@ -32,7 +32,7 @@ namespace substab{
 				}
 				printf("First window, complete track: %d\n", (int) fullTrackInd.size());
 
-				//filterDynamicTrack(images, trackMatrix, fullTrackInd, testV, tWindow, wMatrix);
+				filterDynamicTrack(images, trackMatrix, fullTrackInd, testV, tWindow, wMatrix);
 
 				MatrixXd A((int) fullTrackInd.size() * 2, tWindow);
 
@@ -55,6 +55,8 @@ namespace substab{
 				for (auto ftid = 0; ftid < fullTrackInd.size(); ++ftid) {
 					const int idx = fullTrackInd[ftid];
 					coe.block(2 * idx, 0, 2, kBasis) = curcoe.block(2 * ftid, 0, 2, kBasis);
+					for(auto i=testV; i<testV+tWindow; ++i)
+						wMatrix[idx][i] = 1;
 					is_computed[idx] = true;
 				}
 
@@ -110,7 +112,7 @@ namespace substab{
 						trackMatrix.offset[tid] + trackMatrix.tracks[tid].size() >= v + tWindow) {
 						bool is_valid = true;
 						for(auto i=v; i<v+tWindow; ++i){
-							if(!wMatrix[tid][i]) {
+							if(wMatrix[tid][i] == -1) {
 								is_valid = false;
 								break;
 							}
@@ -128,13 +130,14 @@ namespace substab{
 					}
 				}
 
-//				filterDynamicTrack(images, trackMatrix, preFullTrackInd, v, tWindow, wMatrix);
-//				filterDynamicTrack(images, trackMatrix, newFullTrackInd, v, tWindow, wMatrix);
+				filterDynamicTrack(images, trackMatrix, preFullTrackInd, v, tWindow, wMatrix);
+				filterDynamicTrack(images, trackMatrix, newFullTrackInd, v, tWindow, wMatrix);
+				printf("Num pre full track:%d, num new full track:%d\n", (int)preFullTrackInd.size(), (int)newFullTrackInd.size());
 
-				MatrixXd A12((int) preFullTrackInd.size() * 2, stride);
-				MatrixXd A2((int) newFullTrackInd.size() * 2, tWindow);
-				MatrixXd C1((int) preFullTrackInd.size() * 2, kBasis);
-				MatrixXd A11((int) preFullTrackInd.size() * 2, tWindow - stride);
+				MatrixXd A12 = MatrixXd::Zero((int) preFullTrackInd.size() * 2, stride);
+				MatrixXd A2 = MatrixXd::Zero((int) newFullTrackInd.size() * 2, tWindow);
+				MatrixXd C1 = MatrixXd::Zero((int) preFullTrackInd.size() * 2, kBasis);
+				MatrixXd A11 = MatrixXd::Zero((int) preFullTrackInd.size() * 2, tWindow - stride);
 
 				MatrixXd E1 = bas.block(0, v, bas.rows(), tWindow - stride);
 
@@ -151,6 +154,17 @@ namespace substab{
 					C1.block(ftid*2, 0, 2, C1.cols()) = coe.block(idx*2,0,2,coe.cols());
 				}
 
+//				{
+//					for(auto i=v+tWindow-stride; i<v+tWindow; ++i){
+//						Mat img = images[i].clone();
+//						for(auto ftid=0; ftid<preFullTrackInd.size(); ++ftid){
+//							cv::circle(img, cv::Point2d(A12(ftid*2, i-v-tWindow+stride),A12(ftid*2+1, i-v-tWindow+stride)), 1, Scalar(0,0,255), 1);
+//						}
+//						imshow("A12", img);
+//						waitKey();
+//					}
+//				}
+
 				for (auto ftid = 0; ftid < newFullTrackInd.size(); ++ftid) {
 					const int idx = newFullTrackInd[ftid];
 					const int offset = (int) trackMatrix.offset[idx];
@@ -165,24 +179,29 @@ namespace substab{
 				MatrixXd A21 = A2.block(0, 0, A2.rows(), tWindow - stride);
 				MatrixXd A22 = A2.block(0, tWindow - stride, A2.rows(), stride);
 
-				MatrixXd C2(A21.rows(), kBasis);
 				MatrixXd EE = E1 * E1.transpose();
 				MatrixXd EEinv = EE.inverse();
-				C2 = A21 * E1.transpose() * EEinv;
+				MatrixXd C2 = A21 * E1.transpose() * EEinv;
 
 				MatrixXd largeC(C1.rows() + C2.rows(), C1.cols());
-				largeC << C1,
-						C2;
+				largeC.block(0,0,C1.rows(),kBasis) = C1;
+				largeC.block(C1.rows(),0,C2.rows(), kBasis) = C2;
+
 				MatrixXd largeA(A12.rows() + A22.rows(), A12.cols());
-				largeA << A12,
-						A22;
+				largeA.block(0,0,A12.rows(),A12.cols()) = A12;
+				largeA.block(A12.rows(),0,A22.rows(), A22.cols()) = A22;
+
 				MatrixXd E2 = (largeC.transpose() * largeC).inverse() * largeC.transpose() * largeA;
-				CHECK_EQ(E2.rows(), kBasis);
-				CHECK_EQ(E2.cols(), stride);
+				//MatrixXd E2 = (C1.transpose() * C1).inverse() * C1.transpose() * A12;
+				//MatrixXd E2 = (C2.transpose() * C2).inverse() * C2.transpose() * A22;
+
 				bas.block(0, v + tWindow - stride, bas.rows(), stride) = E2;
+
 				for (auto ftid = 0; ftid < newFullTrackInd.size(); ++ftid) {
 					const int idx = newFullTrackInd[ftid];
 					coe.block(2 * idx, 0, 2, coe.cols()) = C2.block(2 * ftid, 0, 2, C2.cols());
+					for(auto i=v; i<tWindow; ++i)
+						wMatrix[idx][i] = 1;
 					is_computed[idx] = true;
 				}
 
@@ -199,6 +218,32 @@ namespace substab{
 						}
 					}
 					printf("Reconstruction error for A12: %.3f\n", errorA12 / countA12);
+
+					//error A21
+					double errorA21 = 0.0, countA21 = 0.0;
+					MatrixXd reconA21 = C2 * bas.block(0,v,kBasis,tWindow-stride);
+					for(auto ftid=0; ftid<newFullTrackInd.size(); ++ftid){
+						for(auto i=0; i<tWindow-stride; ++i){
+							Vector2d oriPt = A21.block(ftid*2,i,2,1);
+							Vector2d reconPt = reconA21.block(ftid*2, i, 2,1);
+							errorA21 += (oriPt-reconPt).norm();
+							countA21 += 1.0;
+						}
+					}
+					printf("Reconstruction error for A21: %.3f\n", errorA21 / countA21);
+
+					//error A22
+					double errorA22 = 0.0, countA22 = 0.0;
+					MatrixXd reconA22 = C2 * bas.block(0,v+tWindow-stride,kBasis,stride);
+					for(auto ftid=0; ftid<newFullTrackInd.size(); ++ftid){
+						for(auto i=0; i<stride; ++i){
+							Vector2d oriPt = A22.block(ftid*2,i,2,1);
+							Vector2d reconPt = reconA22.block(ftid*2, i, 2,1);
+							errorA22 += (oriPt-reconPt).norm();
+							countA22 += 1.0;
+						}
+					}
+					printf("Reconstruction error for A22: %.3f\n", errorA22 / countA22);
 
 					//sanity check: compute reconstruction error in current window
 					MatrixXd reconA = C2 * bas.block(0, v, bas.rows(), tWindow);
@@ -263,42 +308,6 @@ namespace substab{
 						   newTrackError / countNewTrack,
 						   (preFullError2 + newTrackError) / (countPreTrack2 + countNewTrack));
 				}
-
-				{
-					vector<int> fullNextWindow;
-					for (auto ftid = 0; ftid < preFullTrackInd.size(); ++ftid) {
-						const int idx = preFullTrackInd[ftid];
-						const int offset = (int)trackMatrix.offset[idx];
-						if(offset+trackMatrix.tracks[idx].size() >= v+tWindow+stride)
-							fullNextWindow.push_back(idx);
-					}
-					for (auto ftid = 0; ftid < newFullTrackInd.size(); ++ftid) {
-						const int idx = newFullTrackInd[ftid];
-						const int offset = (int)trackMatrix.offset[idx];
-						if(offset+trackMatrix.tracks[idx].size() >= v+tWindow+stride)
-							fullNextWindow.push_back(idx);
-					}
-					MatrixXd C3 = MatrixXd::Zero((int)fullNextWindow.size()*2, kBasis);
-					for(auto ftid=0; ftid<fullNextWindow.size(); ++ftid){
-						const int idx = fullNextWindow[ftid];
-						C3.block(ftid*2,0,2,kBasis) = coe.block(2*idx,0,2,kBasis);
-					}
-					MatrixXd reconNext = C3 * bas.block(0,v,kBasis,tWindow);
-					double nextError = 0.0;
-					double nextCount = 0.0;
-					for(auto ftid=0; ftid<fullNextWindow.size(); ++ftid){
-						const int idx = fullNextWindow[ftid];
-						const int offset = (int)trackMatrix.offset[idx];
-						for(auto i=v; i<v+tWindow; ++i) {
-							Vector2d oript(trackMatrix.tracks[idx][i-offset].x,trackMatrix.tracks[idx][i-offset].y);
-							Vector2d reconPt = reconNext.block(ftid*2,i-v,2,1);
-							nextError += (reconPt - oript).norm();
-							nextCount++;
-						}
-					}
-					printf("Full track in next window: %d, Anticipated error: %.3f\n", (int)fullNextWindow.size(), nextError/nextCount);
-				}
-
 			}
 
 			//compute overall error
@@ -307,7 +316,7 @@ namespace substab{
 
 
 		void filterDynamicTrack(const std::vector<cv::Mat>& images, const FeatureTracks& trackMatrix, std::vector<int>& fullTrackInd,
-								const int sf, const int tw, vector<vector<bool> >& wMatrix){
+								const int sf, const int tw, vector<vector<int> >& wMatrix){
 			const double max_ratio = 0.33;
 			vector<double> totalCount(fullTrackInd.size(), 0.0);
 			vector<double> outlierCount(fullTrackInd.size(), 0.0);
@@ -340,6 +349,28 @@ namespace substab{
 					if(epi.dot(pt) > max_epiError)
 						outlierCount[trackId[ptid]] += 1.0;
 				}
+
+//				{
+//					char buffer[1024] = {};
+//					Mat img1 = images[v].clone();
+//					Mat img2 = images[v+stride-1].clone();
+//					const int testId = pts1.size() / 2;
+//					cv::circle(img1, pts1[testId], 2, Scalar(0,0,255), 2);
+//					Vector3d testEpi(epilines.at<Vec3f>(testId,0)[0],epilines.at<Vec3f>(testId,0)[1],epilines.at<Vec3f>(testId,0)[2]);
+//					for(auto y=0; y<img2.rows; ++y){
+//						for(auto x=0; x<img2.cols; ++x){
+//							Vector3d loc(x,y,1);
+//							if(std::abs(loc.dot(testEpi)) < 0.5)
+//								cv::circle(img2, cv::Point2i(x,y), 1, cv::Scalar(255,0,0), 1);
+//						}
+//					}
+//					cv::circle(img2, pts2[testId], 2, Scalar(0,0,255),2);
+//					Mat himg;
+//					cv::hconcat(img1, img2, himg);
+//					sprintf(buffer, "epiTest_sf%d_v%d_id%d.jpg", sf, v, testId);
+//					imwrite(buffer, himg);
+//				}
+
 			}
 
 			vector<int> inlierInd;
@@ -349,32 +380,12 @@ namespace substab{
 					inlierInd.push_back(fullTrackInd[i]);
 				else{
 					for(auto v=sf; v<wMatrix[fullTrackInd[i]].size(); ++v)
-						wMatrix[fullTrackInd[i]][v] = false;
+						wMatrix[fullTrackInd[i]][v] = -1;
 				}
 			}
 
 			printf("%d out of %d tracks are kept\n", (int)inlierInd.size(), (int)fullTrackInd.size());
 			fullTrackInd.swap(inlierInd);
-
-			{
-//				char buffer[1024] = {};
-//				Mat img1 = images[sf].clone();
-//				Mat img2 = images[sf + tw - 1].clone();
-//				const int testId = 100;
-//				cv::circle(img1, pts1[testId], 2, Scalar(0,0,255), 2);
-//				Vector3d testEpi(epilines.at<Vec3f>(testId,0)[0],epilines.at<Vec3f>(testId,0)[1],epilines.at<Vec3f>(testId,0)[2]);
-//				for(auto y=0; y<img2.rows; ++y){
-//					for(auto x=0; x<img2.cols; ++x){
-//						Vector3d loc(x,y,1);
-//						if(std::abs(loc.dot(testEpi)) < 1.0)
-//							cv::circle(img2, cv::Point2i(x,y), 1, cv::Scalar(255,0,0), 1);
-//					}
-//				}
-//				Mat himg;
-//				cv::hconcat(img1, img2, himg);
-//				sprintf(buffer, "epiTest_sf%d_tw%d_id%d.jpg", sf, tw, testId);
-//				imwrite(buffer, himg);
-			}
 		}
 
 		void trackSmoothing(const Eigen::MatrixXd& input, Eigen::MatrixXd& output, const int r, const double sigma){
