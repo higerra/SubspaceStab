@@ -4,6 +4,7 @@ project(SubspaceStab)
 
 find_package(OpenCV REQUIRED)
 find_package(gflags REQUIRED)
+find_package(Ceres REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Wno-deprecated-declarations -Wno-deprecated-register")
 set(CMAKE_BUILD_TYPE Release)
@@ -18,6 +19,6 @@ if(OPENMP_FOUND)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-add_executable(SubspaceStab main.cpp tracking.h tracking.cpp warping.h warping.cpp factorization.cpp factorization.h)
+add_executable(SubspaceStab main.cpp tracking.h tracking.cpp factorization.cpp factorization.h warping.h warping.cpp gridenergy.h utility.h utility.cpp thread_guard.h)
 
-target_link_libraries(SubspaceStab ${OpenCV_LIBS} glog gflags)
+target_link_libraries(SubspaceStab ${OpenCV_LIBS} glog gflags ${CERES_LIBRARIES})

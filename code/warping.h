@@ -8,6 +8,7 @@
 #include <opencv2/opencv.hpp>
 #include <Eigen/Eigen>
 #include <iostream>
+#include <glog/logging.h>
 
 namespace substab {
 
@@ -20,6 +21,10 @@ namespace substab {
 
 		//wf: output dense warping field
 		void warpImage(const cv::Mat& input, cv::Mat& output, const std::vector<Eigen::Vector2d>& pts1, const std::vector<Eigen::Vector2d>& pts2)const;
+		//void warpImageCloseForm(const cv::Mat& input, cv::Mat& output, const std::vector<Eigen::Vector2d>& pts1, const std::vector<Eigen::Vector2d>& pts2) const;
+
+		void computeSimilarityWeight(const cv::Mat& input, std::vector<Eigen::Vector2d>& saliency) const;
+
 		inline double getBlockW() const{
 			return blockW;
 		}
