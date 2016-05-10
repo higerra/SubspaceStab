@@ -17,7 +17,6 @@ DEFINE_int32(stride, 5, "Stride");
 DEFINE_int32(kernelR, -1, "Radius of kernel");
 DEFINE_int32(num_thread, 6, "number of threads");
 DEFINE_string(output, "", "output file name");
-DEFINE_string(input, "", "input file name");
 DEFINE_bool(crop, true, "crop the output video");
 DEFINE_bool(draw_points, false, "draw feature points");
 
@@ -31,13 +30,12 @@ int main(int argc, char** argv){
 	}
 	google::InitGoogleLogging(argv[0]);
 	google::ParseCommandLineFlags(&argc, &argv, true);
-	CHECK(!FLAGS_input.empty()) << "You must provide a input file!";
 
 	char buffer[1024] = {};
 	vector<Mat> images;
 	printf("Reading video...\n");
 	int vcodec; double frameRate;
-	importVideo(FLAGS_input, images, frameRate, vcodec);
+	importVideo(string(argv[1]), images, frameRate, vcodec);
 
 	//tracking
 	FeatureTracks trackMatrix;
@@ -154,17 +152,18 @@ int main(int argc, char** argv){
 void importVideo(const std::string& path, std::vector<cv::Mat>& images, double& fps, int& vcodec){
 	VideoCapture cap(path);
 	CHECK(cap.isOpened()) << "Can not open video " << path;
-	//cv::Size dsize(640,320);
+	cv::Size dsize(640,320);
 	while(true){
 		Mat frame;
 		bool success = cap.read(frame);
 		if(!success)
 			break;
-		//cv::resize(frame, frame, dsize);
+		cv::resize(frame, frame, dsize);
 		images.push_back(frame);
 	}
 	fps = cap.get(CV_CAP_PROP_FPS);
 	vcodec = (int)cap.get(CV_CAP_PROP_FOURCC);
+
 }
 
 
