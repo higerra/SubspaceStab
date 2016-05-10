@@ -85,13 +85,22 @@ namespace substab{
 		}
 	}
 
-	void GridWarpping::computeSimilarityWeight(const cv::Mat &input, std::vector<Eigen::Vector2d>& saliency) const {
-		saliency.resize((size_t)((gridW+1)*(gridH+1)));
-		vector<vector<Vector3d> > pixs(saliency.size());
-		for(auto y=0; y<input.rows; ++y){
-			for(auto x=0; x<input.cols; ++x){
-				Vector4i ind;
-
+	void GridWarpping::computeSimilarityWeight(const cv::Mat &input, std::vector<double>& saliency) const {
+		saliency.resize((size_t)(gridW*gridH));
+		for(auto y=0; y<gridH; ++y){
+			for(auto x=0; x<gridW; ++x){
+				const int gid = gridInd(x,y);
+				vector<vector<double> > pixs(3);
+				for(auto x1=(int)gridLoc[gridInd(x,y)][0]; x1<gridLoc[gridInd(x+1,y+1)][0]; ++x1){
+					for(auto y1=(int)gridLoc[gridInd(x,y)][1]; y1<gridLoc[gridInd(x+1,y+1)][1]; ++y1){
+						Vec3b pix = input.at<Vec3b>(y1,x1);
+						pixs[0].push_back((double)pix[0] / 255.0);
+						pixs[1].push_back((double)pix[1] / 255.0);
+						pixs[2].push_back((double)pix[2] / 255.0);
+					}
+				}
+				Vector3d vars(math_util::variance(pixs[0]),math_util::variance(pixs[1]),math_util::variance(pixs[2]));
+				saliency[gid] = vars.norm();
 			}
 		}
 	}
@@ -131,12 +140,9 @@ namespace substab{
 			cInd += 2;
 		}
 
-		//add similarity constraint
-		auto gridInd = [&](int x, int y){
-			CHECK_LE(x,gridW);
-			CHECK_LE(y,gridH);
-			return y*(gridW+1)+x;
-		};
+
+//		vector<double> saliency;
+//		computeSimilarityWeight(input, saliency);
 
 		auto getLocalCoord = [](const Vector2d& p1, const Vector2d& p2, const Vector2d& p3){
 			Vector2d axis1 = p3 - p2;

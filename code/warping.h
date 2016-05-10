@@ -21,8 +21,13 @@ namespace substab {
 
 		void warpImageCloseForm(const cv::Mat& input, cv::Mat& output, const std::vector<Eigen::Vector2d>& pts1, const std::vector<Eigen::Vector2d>& pts2) const;
 
-		void computeSimilarityWeight(const cv::Mat& input, std::vector<Eigen::Vector2d>& saliency) const;
+		void computeSimilarityWeight(const cv::Mat& input, std::vector<double>& saliency) const;
 
+		inline int gridInd(int x, int y)const{
+			CHECK_LE(x, gridW);
+			CHECK_LE(y, gridH);
+			return y*(gridW+1)+x;
+		}
 		inline double getBlockW() const{
 			return blockW;
 		}

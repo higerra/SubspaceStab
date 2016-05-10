@@ -19,6 +19,7 @@ DEFINE_int32(num_thread, 6, "number of threads");
 DEFINE_string(output, "", "output file name");
 DEFINE_bool(crop, true, "crop the output video");
 DEFINE_bool(draw_points, false, "draw feature points");
+DEFINE_bool(resize, true, "resize to 640 * 360");
 
 void importVideo(const std::string& path, std::vector<cv::Mat>& images, double& fps, int& vcodec);
 void cropImage(const std::vector<cv::Mat>& input, std::vector<cv::Mat>& output);
@@ -158,7 +159,8 @@ void importVideo(const std::string& path, std::vector<cv::Mat>& images, double& 
 		bool success = cap.read(frame);
 		if(!success)
 			break;
-		cv::resize(frame, frame, dsize);
+		if(FLAGS_resize)
+			cv::resize(frame, frame, dsize);
 		images.push_back(frame);
 	}
 	fps = cap.get(CV_CAP_PROP_FPS);
