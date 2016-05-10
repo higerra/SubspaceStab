@@ -29,7 +29,7 @@ namespace substab{
 
 			const double max_diff_distance = 1;
 			const int max_corners = 600;
-			const int interval = 1;
+			const int interval = 5;
 
 			printf("Building image pyramid...\n");
 			vector<vector<cv::Mat> > pyramid(images.size());
@@ -37,7 +37,7 @@ namespace substab{
 				cv::buildOpticalFlowPyramid(grays[v], pyramid[v], cv::Size(winSizePyramid, winSizePyramid), nLevel);
 			}
 
-			for(auto v=0; v<images.size()-tWindow; v+=interval){
+			for(auto v=0; v<images.size()-tWindow; v++){
 				CHECK_EQ(trackMatrix.tracks.size(), trackMatrix.offset.size());
 				printf("Start frame: %d/%d\n", v, (int)images.size()-tWindow);
 				vector<cv::Point2f> corners;
@@ -46,12 +46,14 @@ namespace substab{
 				newcorners.reserve(corners.size());
 				for(auto cid=0; cid < corners.size(); ++cid){
 					bool is_new = true;
-					for(auto j=0; j<trackMatrix.tracks.size(); ++j){
-						if(trackMatrix.tracks[j].size() + trackMatrix.offset[j] >= v){
-							const cv::Point2f& pt = trackMatrix.tracks[j][v-trackMatrix.offset[j]];
-							double dis = cv::norm(corners[cid]-pt);
-							if (dis <= max_diff_distance)
-								is_new = false;
+					if(v % interval != 0) {
+						for (auto j = 0; j < trackMatrix.tracks.size(); ++j) {
+							if (trackMatrix.tracks[j].size() + trackMatrix.offset[j] >= v) {
+								const cv::Point2f &pt = trackMatrix.tracks[j][v - trackMatrix.offset[j]];
+								double dis = cv::norm(corners[cid] - pt);
+								if (dis <= max_diff_distance)
+									is_new = false;
+							}
 						}
 					}
 					if(is_new)
