@@ -109,7 +109,7 @@ int main(int argc, char** argv){
 			}
 //			printf("Frame %d on thread %d\n", v, threadId);
 //			printf("number of constraints: %d\n", (int) pts1.size());
-			warping.warpImageCloseForm(images[v], warped[v], pts1, pts2);
+			warping.warpImageCloseForm(images[v], warped[v], pts1, pts2,v);
 			if(FLAGS_draw_points) {
 				for (auto ftid = 0; ftid < pts2.size(); ++ftid)
 					cv::circle(warped[v], cv::Point2d(pts2[ftid][0], pts2[ftid][1]), 1, Scalar(0, 0, 255), 2);

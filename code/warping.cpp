@@ -70,17 +70,23 @@ namespace substab{
 
 	void GridWarpping::visualizeGrid(const std::vector<Eigen::Vector2d>& grid, cv::Mat &img) const {
 		CHECK_EQ(grid.size(), gridLoc.size());
-		img = Mat(height, width, CV_8UC3, Scalar(0,0,0));
+		CHECK_EQ(img.cols, width);
+		CHECK_EQ(img.rows, height);
+		//img = Mat(height, width, CV_8UC3, Scalar(0,0,0));
 		for(auto gy=0; gy<gridH; ++gy) {
 			for (auto gx = 0; gx < gridW; ++gx){
 				const int gid1 = gy * (gridW+1) + gx;
 				const int gid2 = (gy+1) * (gridW+1) + gx;
 				const int gid3 = (gy+1)*(gridW+1)+gx+1;
 				const int gid4= gy * (gridW+1) + gx+1;
-				cv::line(img, cv::Point(grid[gid1][0], grid[gid1][1]), cv::Point(grid[gid2][0], grid[gid2][1]), Scalar(255,255,255));
-				cv::line(img, cv::Point(grid[gid2][0], grid[gid2][1]), cv::Point(grid[gid3][0], grid[gid3][1]), Scalar(255,255,255));
-				cv::line(img, cv::Point(grid[gid3][0], grid[gid3][1]), cv::Point(grid[gid4][0], grid[gid4][1]), Scalar(255,255,255));
-				cv::line(img, cv::Point(grid[gid4][0], grid[gid4][1]), cv::Point(grid[gid1][0], grid[gid1][1]), Scalar(255,255,255));
+				if(grid[gid1][0] > 0 && grid[gid2][0] > 0)
+					cv::line(img, cv::Point(grid[gid1][0], grid[gid1][1]), cv::Point(grid[gid2][0], grid[gid2][1]), Scalar(255,255,255));
+				if(grid[gid2][0] > 0 && grid[gid3][0] > 0)
+					cv::line(img, cv::Point(grid[gid2][0], grid[gid2][1]), cv::Point(grid[gid3][0], grid[gid3][1]), Scalar(255,255,255));
+				if(grid[gid3][0] > 0 && grid[gid4][0] > 0)
+					cv::line(img, cv::Point(grid[gid3][0], grid[gid3][1]), cv::Point(grid[gid4][0], grid[gid4][1]), Scalar(255,255,255));
+				if(grid[gid4][0] > 0 && grid[gid1][0] > 0)
+					cv::line(img, cv::Point(grid[gid4][0], grid[gid4][1]), cv::Point(grid[gid1][0], grid[gid1][1]), Scalar(255,255,255));
 			}
 		}
 	}
@@ -106,7 +112,7 @@ namespace substab{
 	}
 
 
-	void GridWarpping::warpImageCloseForm(const cv::Mat &input, cv::Mat &output, const vector<Vector2d>& pts1, const vector<Vector2d>& pts2) const {
+	void GridWarpping::warpImageCloseForm(const cv::Mat &input, cv::Mat &output, const vector<Vector2d>& pts1, const vector<Vector2d>& pts2, const int id) const {
 		CHECK_EQ(pts1.size(), pts2.size());
 
 		char buffer[1024] = {};
@@ -140,6 +146,12 @@ namespace substab{
 			cInd += 2;
 		}
 
+		// Mat inputOutput = input.clone();
+		// visualizeGrid(gridLoc, inputOutput);
+		// for(const auto& pt: pts1)
+		// 	cv::circle(inputOutput, cv::Point2d(pt[0], pt[1]), 1, Scalar(0,0,255), 2);
+		// sprintf(buffer, "vis_input%05d.jpg", id);
+		// imwrite(buffer, inputOutput);
 
 //		vector<double> saliency;
 //		computeSimilarityWeight(input, saliency);
@@ -236,6 +248,13 @@ namespace substab{
 				output.at<Vec3b>(y,x) = Vec3b((uchar) pixO[0], (uchar)pixO[1], (uchar)pixO[2]);
 			}
 		}
+
+		// Mat outputOutput = input.clone();
+		// visualizeGrid(vars, outputOutput);
+		// for(const auto& pt: pts2)
+		// 	cv::circle(outputOutput, cv::Point2d(pt[0], pt[1]), 1, Scalar(0,0,255), 2);
+		// sprintf(buffer, "vis_output%05d.jpg", id);
+		// imwrite(buffer, outputOutput);
 	}
 
 }//namespace substablas
