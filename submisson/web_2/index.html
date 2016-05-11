@@ -22,43 +22,42 @@
 	Video Stabilization
     </a></p>
     <p><a href="http://gvv.mpi-inf.mpg.de/teaching/gvv_seminar_2012/papers/Content-Preserving%20Warps%20for%203D%20Video%20Stabilization.pdf">Content
-	Preserving  Warps for 3D Video Stabilization</a></p>
+	Preserving Warps for 3D Video Stabilization</a></p>
     
-    The problem tackled in this project is to take an input
-    video captured by a hand held camera, produce an output video that
-    is more stable. One example is shown below:</p>
+    The problem tackled in this project is to take an input video
+    captured by a hand held camera, produce an output video that is
+    more stable. One example is shown below:</p>
 <table>
   <tr>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/campus1.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/It9Yuh0mTrs" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/result_campus1.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/ztwhL0oixws" frameborder="0"
+      allowfullscreen></iframe>
     </td>
   </tr>
 </table>
 
 
 <h2>Related Work</h2>
-<p>There are numerous works on video stabilization. In this section
-  I briefly summerize parts of them.</p>
-<p>Video stabilization algorithms can be roughly categroized into
-  two branches: 2D methods and 3D methods. The difference is whether
-  3D information is computed and used.</p>
-<p>The method proposed by Liu et
-  al[1] is a good example of the second category. They estimate the
-  camera pose and sparse 3D points by Structure from Motion. Camera
-  path is then smoothed in 3D space. The 3D methods provide
-  physically accurate way to smooth the camera path. It is also
-  robust to dynamic content, since modern SfM systems can robustly
-  identify dynamic content as outliers. However, restricted by SfM,
-  the 3D method can not apply to video with small baseline. Also,
-  the running time can easily achieve to hours for long video
-  sequences, mainly caused for SfM.</p>
+<p>There are numerous works on video stabilization. In this section I
+  briefly summerize parts of them.</p>
+<p>Video stabilization algorithms can be roughly categroized into two
+  branches: 2D methods and 3D methods. The difference is whether 3D
+  information is computed and used.</p>
+<p>The method proposed by Liu et al[1] is a good example of the second
+  category. They estimate the camera pose and sparse 3D points by
+  Structure from Motion. Camera path is then smoothed in 3D space. The
+  3D methods provide physically accurate way to smooth the camera
+  path. It is also robust to dynamic content, since modern SfM systems
+  can robustly identify dynamic content as outliers. However,
+  restricted by SfM, the 3D method can not apply to video with small
+  baseline. Also, the running time can easily achieve to hours for
+  long video sequences, mainly caused for SfM.</p>
 <p>2D methods do not estimate 3D geometry of the scene. The core
   algorithm of this project belongs to this category. The algorithm
   works by first extracing and tracking feature points across the
@@ -74,26 +73,17 @@
   algorithm inside OpenCV library.</p>
 <p>The output of this step is a $2m\times N$ trajetory matrix, where
   $m$ is the number of all feature tracks and $N$ is the number of
-  frames:</p>
-$
-\begin{equation}
-M_{2m\times N}=\begin{bmatrix}
-x_0^0 & x_0^1 & x_0^2 & ... & x_0^n\\
-y_0^0 & y_0^1 & y_0^2 & ... & y_0^n\\
-x_1^0 & x_1^1 & x_1^2 & ... & x_1^n\\
-y_1^0 & y_1^1 & y_1^2 & ... & y_1^n\\
-...\\
-x_m^0 & x_m^1 & x_m^2 & ... & x_m^n\\
-y_m^0 & y_m^1 & y_m^2 & ... & y_m^n
-\end{bmatrix}
-\end{equation}
-$
+  frames:</p> $ \begin{equation} M_{2m\times N}=\begin{bmatrix} x_0^0
+  & x_0^1 & x_0^2 & ... & x_0^n\\ y_0^0 & y_0^1 & y_0^2 & ... &
+  y_0^n\\ x_1^0 & x_1^1 & x_1^2 & ... & x_1^n\\ y_1^0 & y_1^1 & y_1^2
+  & ... & y_1^n\\ ...\\ x_m^0 & x_m^1 & x_m^2 & ... & x_m^n\\ y_m^0 &
+  y_m^1 & y_m^2 & ... & y_m^n \end{bmatrix} \end{equation} $
 <p>Notice that since not all tracks exist across the whole video, the
   above matrix is highly incomplete. A typical pattern of the matrix
   is shown below (figure from the original paper). Notice that the
   typically $m>>N$, the figure is shrinked in the vertical direction
-  to make it a square.</p>
-<image height="200px" src="images/pattern.png"/>
+  to make it a square.</p>  <image height="200px"
+  src="images/pattern.png"/>
 
 <p>To stabilize video, we want to smooth the trajetory of each
   feature. However, given the incomplete nature of the trajetory
@@ -106,21 +96,18 @@ $
   constraint to the location of smoothed trajetory. There is a well
   known fact in computer vision: under the orthogonal projection, the
   trajetories of static scene points lie on a low rank
-  subspace. Though this constraint does not hold true to commonly
-  used pinhole camera model, we can still approximate this low rank
+  subspace. Though this constraint does not hold true to commonly used
+  pinhole camera model, we can still approximate this low rank
   property locally in a small temporal window. We can then factorize
   the matrix $M$ into a coefficience matrix $C$ and a base matrix
-  $E$:</p>
-$
-\begin{equation}
-M=\begin{bmatrix}{ } \\ C\\{ }\end{bmatrix}\begin{bmatrix}{} & E & {}\end{bmatrix}
-\end{equation}
-$
+  $E$:</p> $ \begin{equation} M=\begin{bmatrix}{ } \\ C\\{
+  }\end{bmatrix}\begin{bmatrix}{} & E & {}\end{bmatrix} \end{equation}
+  $
 <p>where $C$ is a $2m\times r$ matrix and $E$ is a $r\times N$
   matrix. In the paper, $r$ is set to 9. Matrix $E$ is then regarded
-  as the eigen trajetories. We can then perform the smoothing to
-  eigen trajetories and get the smoothed tragetory in original space
-  by multiplying back the $C$ matrix. By doing this, we enfore the 3D
+  as the eigen trajetories. We can then perform the smoothing to eigen
+  trajetories and get the smoothed tragetory in original space by
+  multiplying back the $C$ matrix. By doing this, we enfore the 3D
   rigid constraint to the smoothing of each trajetory.</p>
 
 <p>Since this decomposition is only true locally, the algorithm
@@ -165,30 +152,18 @@ $
   feature points should be close to the target locations. For each
   feature points $P_i$, we can represent its coordinate by the linear
   combination of four mesh vertices $V_i^1,V_i^2,V_i^3,V_i^4$
-  surrounding it (bilinear interpolation):</p>
-$
-\begin{equation}
-P_i=\sum_{j=1}^4{w_jV_i^j}
-\end{equation}
-$
-<p>So the constraint can be written as:</p>
-$
-\begin{equation}
-E_V = \sum_{i=1}^m{(\sum_{j=1}^4{w_i^j V_i^j - P_i')^2}}
-\end{equation}
-$
+  surrounding it (bilinear interpolation):</p> $ \begin{equation}
+  P_i=\sum_{j=1}^4{w_jV_i^j} \end{equation} $
+<p>So the constraint can be written as:</p> $ \begin{equation} E_V =
+\sum_{i=1}^m{(\sum_{j=1}^4{w_i^j V_i^j - P_i')^2}} \end{equation} $
 <p>Since we only have limited number of feature correspondence, large
-  portion of the mesh will be unconstrainted. A regularization term
-  is added to constraint the remaining vertices. In short, we want
-  the mesh to preserve shape. For every three neighboring vertices
-  that form a triangle, we want the triangle formed by the same three
-  vertices in the output mesh to be the similarity
-  transformation.</p>
-$
-\begin{equation}
-E_S(V_1) = (V_1-V_2-u(V_3-V_2)-vR_{90}(V_3-V_2))^2
-\end{equation}
-$
+  portion of the mesh will be unconstrainted. A regularization term is
+  added to constraint the remaining vertices. In short, we want the
+  mesh to preserve shape. For every three neighboring vertices that
+  form a triangle, we want the triangle formed by the same three
+  vertices in the output mesh to be the similarity transformation.</p>
+  $ \begin{equation} E_S(V_1) =
+  (V_1-V_2-u(V_3-V_2)-vR_{90}(V_3-V_2))^2 \end{equation} $
 
 <p>The above optimization problem is a standard least square problem
   and can be solved efficiently by sparse QR decomposition.</p>
@@ -201,6 +176,10 @@ $
   the result by 3D stabilization method. Notice that the results from
   the author use linear path planning, while I use simple path
   smoothing.</p>
+<p>Due to the efficient moving factorization and closed form solution
+  to the warping, the algorithm achieves around 5 fps for feature
+  tracking, over 500 fps for moving factorization and over 50 fps for
+  image warping with 1080p video input.</p>
 <table>
   <tr>
     <td>Input video</td>
@@ -209,58 +188,61 @@ $
   </tr>
   <tr>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/18AF.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/jrz63BiI8CE" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/result_18AF.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/SRe726_9P9A" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/New_18AF_ours_wnd50.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/7GKp4ykTcOw" frameborder="0"
+      allowfullscreen></iframe>
     </td>
   </tr>
   <tr>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/00006_1.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/G37VVoiQNOs" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/result_00006_1.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/axFhliMRYiE" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/00006_3dfail.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/Y4-Vbpr3XzY" frameborder="0"
+      allowfullscreen></iframe>
     </td>
   </tr>
-
   <tr>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/0073YC.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/u_dIHOD8b68" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/result_0073YC.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/OKAUpC7Wic8" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls  loop mute>
-	<source src="images/0073YC_3dfail.mp4" type="video/mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/OnLQzqOzLh0" frameborder="0"
+      allowfullscreen></iframe>
     </td>
   </tr>
 </table>
-<p>Some additional result captured by myself:</p>
+<p>These results are successful. The video are smoothed without much
+  visual artifacts. Notice that in the second experiment, there is a
+  small portion of dynamic content (biker) and is handled by epipolar
+  constraint.</p>
+<p>Some additional examples captured by myself:</p>
 <table>
   <tr>
     <td>Input Video</td>
@@ -268,41 +250,92 @@ $
   </tr>
   <tr>
     <td>
-      <video height="360px" controls mute>
-	<source src="images/campus1.mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/It9Yuh0mTrs" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls mute>
-	<source src="images/result_campus1.mp4">
-      </video>
-    </td>
-  </tr>
-  <tr>
-    <td>
-      <video height="360px" controls mute>
-	<source src="images/campus2.mp4">
-      </video>
-    </td>
-    <td>
-      <video height="360px" controls mute>
-	<source src="images/result_campus2.mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/ztwhL0oixws" frameborder="0"
+      allowfullscreen></iframe>
     </td>
   </tr>
   <tr>
     <td>
-      <video height="360px" controls mute>
-	<source src="images/panorama.mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/7IRAKGoI0Ao" frameborder="0"
+      allowfullscreen></iframe>
     </td>
     <td>
-      <video height="360px" controls mute>
-	<source src="images/result_panorama.mp4">
-      </video>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/E2pUY2iaI08" frameborder="0"
+      allowfullscreen></iframe>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/m04VwI-Ca_k" frameborder="0"
+      allowfullscreen></iframe>
+    </td>
+    <td>
+      <iframe width="560" height="315"
+      src="https://www.youtube.com/embed/oZWFxqzfj0A" frameborder="0"
+      allowfullscreen></iframe>
+    </td>
+  </tr>
+    <tr>
+      <td>
+	<iframe width="560" height="315" src="https://www.youtube.com/embed/vCb-oUCtXJY" frameborder="0" allowfullscreen></iframe>
+    </td>
+      <td>
+	<iframe width="560" height="315" src="https://www.youtube.com/embed/zd8ytJvr19w" frameborder="0" allowfullscreen></iframe>
+    </td>
+  </tr>
+
+</table>
+<p>This group of results are less successful compared with the dataset
+provided by the author. There are noticable bounce and
+distortions. This group of videos were cpatured by a CMOS camera,
+where rolling shutter effect will cause distortions when the camera
+moves drastically and our subspace approximation does not hold in this
+case.</p>
+
+<h2>Limitations and failure case</h2>
+<p>Although small portion of dynamic content is handled throught
+  epipolar constraint, this algorithm fails where the majority of the
+  video is non-rigid, see the following example:</p>
+<table>
+  <tr>
+    <td>Input Video</td>
+    <td>Output Video</td>
+  <tr>
+    <td>
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/6Jut36cb3Ko" frameborder="0" allowfullscreen></iframe>
+    </td>
+    <td>
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/uCDGCZGheVE" frameborder="0" allowfullscreen></iframe>
     </td>
   </tr>
 </table>
-
+<p>The algorithm also fails for drastic motion. See the example
+  below (the output video are uncropped):</p>
+<table>
+  <tr>
+    <td>Input Video</td>
+    <td>Output Video</td>
+  <tr>
+    <td>
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/lxGAz8FZUe4" frameborder="0" allowfullscreen></iframe>
+    </td>
+    <td>
+      <iframe width="560" height="315" src="https://www.youtube.com/embed/vXd1NmpavGg" frameborder="0" allowfullscreen></iframe>
+    </td>
+  </tr>
+</table>
+<p>The large bounding comes from two sources: 1. due to the drastic
+  motion, the subspace approximation has large error even inside local
+  window and 2. rolling shutter effect causes severe distortion to the
+  video.</p>
 </body>
 </html>
