@@ -26,7 +26,7 @@ void cropImage(const std::vector<cv::Mat>& input, std::vector<cv::Mat>& output);
 
 int main(int argc, char** argv){
 	if(argc < 2){
-		cerr << "Usage ./SubspaceStab <path-to-data>" << endl;
+		cerr << "Usage ./SubspaceStab <path-to-input-video>" << endl;
 		return 1;
 	}
 	google::InitGoogleLogging(argv[0]);
@@ -34,22 +34,25 @@ int main(int argc, char** argv){
 
 	char buffer[1024] = {};
 	vector<Mat> images;
-	printf("Reading video...\n");
+	// printf("Reading in video file ... \n");
 	int vcodec; double frameRate;
-	importVideo(string(argv[1]), images, frameRate, vcodec);
+   	importVideo(string(argv[1]), images, frameRate, vcodec);
 
-	//tracking
+    //printf()
+    printf("Tracking Features in Frame: %s\n", v, argv[1]);
+
+	//tracking features
 	FeatureTracks trackMatrix;
-	printf("Computing track matrix...\n");
+	// printf("Computing track matrix...\n");
 	Tracking::genTrackMatrix(images, trackMatrix, FLAGS_tWindow, FLAGS_stride);
-	printf("Done\n");
+	// printf("Done\n");
 	Eigen::MatrixXd coe, bas, smoothedBas;
 
 	vector<vector<int> > wMatrix(trackMatrix.offset.size());
 	for(auto tid=0; tid<wMatrix.size(); ++tid)
 		wMatrix[tid].resize(images.size(), 0);
 
-	printf("Factorization...\n");
+	// printf("Factorization...\n");
 	Factorization::movingFactorization(images, trackMatrix, coe, bas, wMatrix, FLAGS_tWindow, FLAGS_stride);
 	const int smoothR = FLAGS_kernelR > 0 ? FLAGS_kernelR : FLAGS_tWindow / 2;
 
@@ -163,8 +166,8 @@ void importVideo(const std::string& path, std::vector<cv::Mat>& images, double& 
 			cv::resize(frame, frame, dsize);
 		images.push_back(frame);
 	}
-	fps = cap.get(CV_CAP_PROP_FPS);
-	vcodec = (int)cap.get(CV_CAP_PROP_FOURCC);
+	fps = cap.get(cv::CAP_PROP_FPS);
+	vcodec = (int)cap.get(cv::CAP_PROP_FOURCC);
 
 }
 

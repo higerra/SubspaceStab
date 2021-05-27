@@ -5,7 +5,7 @@ project(SubspaceStab)
 find_package(OpenCV REQUIRED)
 find_package(gflags REQUIRED)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++11 -Wno-deprecated-declarations -Wno-deprecated-register")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++14 -Wno-deprecated-declarations -Wno-deprecated-register")
 set(CMAKE_BUILD_TYPE Release)
 set(BUILD_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/build")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BUILD_DIRECTORY})
