@@ -122,7 +122,6 @@ Original script `run_all.py` runs on preselected datasets stiches together the f
 ```bash
     python3 run_all.py
 ```
-- Explain Python script subSpace.py
 
 ## References
 
@@ -131,7 +130,7 @@ Stabilization </a>
 - <a href="http://gvv.mpi-inf.mpg.de/teaching/gvv_seminar_2012/papers/Content-Preserving%20Warps%20for%203D%20Video%20Stabilization.pdf">Content
 Preserving Warps for 3D Video Stabilization</a>
 
-## Related
+## Related Work
 
 - [List of Other](https://github.com/yaochih/awesome-video-stabilization) Video Stabilization Methods and Implementations
 
