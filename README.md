@@ -96,7 +96,7 @@ cd code
 cmake CMakeLists.txt
 make
 ```
-Now there should be an executable called `SubspaceStab` in the project folder, and we are ready to use the project.
+Now if `make` was successful, there should be an executable called `SubspaceStab` in the project folder, and we are ready to use the project. If not, please create an issue here.
 
 ## Python requirments
 
