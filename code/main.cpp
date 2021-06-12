@@ -38,9 +38,6 @@ int main(int argc, char** argv){
 	int vcodec; double frameRate;
    	importVideo(string(argv[1]), images, frameRate, vcodec);
 
-    //printf()
-    printf("Tracking Features in Frame: %s\n", v, argv[1]);
-
 	//tracking features
 	FeatureTracks trackMatrix;
 	// printf("Computing track matrix...\n");

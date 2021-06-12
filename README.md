@@ -14,6 +14,12 @@ Preserving Warps for 3D Video Stabilization</a></li>
 <li>Eigen</li>
 <li>Suite-Sparse</li>
 
+To do-
+
+- Explain Python script subSpace.py
+- Add instructions for compilation --> CMake and Makefile
+- instructions on how to build C++ opencv with ffmpeg for the CPP code to compile and work
+
 </body>
 </html>
 
