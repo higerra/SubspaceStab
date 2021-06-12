@@ -29,9 +29,6 @@ If there is a need for a specific version of cmake it can be obtained from the [
 
 ```  sudo apt-get -y install cmake ```
 
-- Add instructions for compilation --> CMake and Makefile
-- instructions on how to build C++ opencv with ffmpeg for the CPP code to compile and work
-
 ## Install Libraries
 
 ### Math Libraries
