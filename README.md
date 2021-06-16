@@ -77,7 +77,7 @@ sudo make install
 Next install opencv from source. Download opencv source [from github](https://github.com/opencv/opencv) or from [source-forge](https://sourceforge.net/projects/opencvlibrary/files/). Extract the folder and `cd` into it. 
 
 ```bash
-cd ffmpeg-folder
+cd opencv-folder
 mkdir build
 cd build
 cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_NEW_PYTHON_SUPPORT=ON -D WITH_QT=OFF -D WITH_V4L=ON -D CMAKE_SHARED_LINKER_FLAGS=-Wl,-Bsymbolic ..
