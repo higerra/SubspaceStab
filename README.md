@@ -81,7 +81,7 @@ cd opencv-folder
 mkdir build
 cd build
 cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D BUILD_NEW_PYTHON_SUPPORT=ON -D WITH_QT=OFF -D WITH_V4L=ON -D CMAKE_SHARED_LINKER_FLAGS=-Wl,-Bsymbolic ..
-make -j5 (under ffmpeg folder)
+make -j5
 sudo make install
 sudo sh -c 'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf'
 sudo ldconfig
