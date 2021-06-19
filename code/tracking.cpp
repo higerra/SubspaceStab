@@ -20,7 +20,7 @@ namespace substab{
 
 			vector<Mat> grays(images.size());
 			for(auto v=0; v<grays.size(); ++v)
-				cvtColor(images[v], grays[v], CV_BGR2GRAY);
+				cvtColor(images[v], grays[v], cv::COLOR_BGR2GRAY);
 
 			const double quality_level = 0.01;
 			const double min_distance = 3;
@@ -39,7 +39,9 @@ namespace substab{
 
 			for(auto v=0; v<images.size()-tWindow; v++){
 				CHECK_EQ(trackMatrix.tracks.size(), trackMatrix.offset.size());
-				printf("Start frame: %d/%d\n", v, (int)images.size()-tWindow);
+				if(v%50 == 0)   {
+				    printf("Tracking Features in Frame: %d/%d\n", v, (int)images.size()-tWindow);
+				}
 				vector<cv::Point2f> corners;
 				cv::goodFeaturesToTrack(grays[v], corners, max_corners, quality_level, min_distance);
 				vector<cv::Point2f> newcorners;
