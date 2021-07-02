@@ -52,8 +52,7 @@ sudo apt-get install libsuitesparse-dev
 git clone https://ceres-solver.googlesource.com/ceres-solver ceres
 cd ceres
 mkdir ceres-bin
-cmake ../CMakeLists.txt
-cd ..
+cmake CMakeLists.txt
 make -j3
 make test
 # This step is marked optional in the instructions but will be needed in our case
