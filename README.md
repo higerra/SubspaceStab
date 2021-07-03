@@ -98,6 +98,9 @@ make
 ```
 Now if `make` was successful, there should be an executable called `SubspaceStab` in the project folder, and we are ready to use the project. If not, please create an issue here.
 
+Note: You might have to edit `CMakeLists.txt` to refelct the correct install location of the previously installed libraries that may be different from the ones specified there currently in your system installtion. Do this by adding the line `include_directories("/usr/include/")` to `CMakeLists.txt`.
+
+
 ## Python requirments
 
 There are no requirments beyond opencv and pre-installed libraries.
